@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     """
 
     # User context
-    user_id: str = "default"
+    user_id: str = "personal"
 
     # Paths (auto-derived if not set)
     memory_dir: Path | None = None

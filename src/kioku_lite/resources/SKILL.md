@@ -30,44 +30,36 @@ pipx install "kioku-lite[cli]"
 
 Nếu chưa có `pipx`:
 ```bash
-pip install pipx
-pipx ensurepath
+pip install pipx && pipx ensurepath
 # Restart terminal, rồi chạy lại pipx install
 ```
 
-Hoặc cài trong venv của project (nếu không muốn dùng pipx):
+Hoặc cài trong venv của project:
 ```bash
-source .venv/bin/activate
-pip install "kioku-lite[cli]"
+source .venv/bin/activate && pip install "kioku-lite[cli]"
 ```
 
-### Bước 1.2 — Kiểm tra config đã setup chưa
+### Bước 1.2 — (Tùy chọn) Pre-download embedding model
+
+Kioku-lite tự download model khi dùng lần đầu (~1.1GB). Nếu muốn download trước cho chắc:
 
 ```bash
-kioku-lite --version   # nếu OK → chạy lệnh đơn giản này để check
+kioku-lite setup
 ```
 
-Cụ thể hơn:
-```bash
-cat ~/.kioku-lite/config.env
-```
+Không cần setup nếu không ngại chờ lần đầu. **Tất cả settings đều có defaults hợp lý.**
 
-**Nếu file không tồn tại** → chạy setup (1 lần, mọi project):
-```bash
-kioku-lite setup --user-id personal
-```
-
-Setup sẽ:
-1. Tạo `~/.kioku-lite/config.env`
-2. Download embedding model `intfloat/multilingual-e5-large` (~1.1GB vào `~/.cache/fastembed/`, **chỉ lần đầu**)
-
-⚠️ Download model lần đầu mất 2-5 phút. Chờ cho xong trước khi tiếp tục.
+> **Muốn đổi `user_id` (để tách data theo người/project)?**
+> Thêm file `.env` vào project directory:
+> ```bash
+> echo "KIOKU_LITE_USER_ID=work" > .env
+> ```
 
 ---
 
 ## 2. Chạy lệnh
 
-Sau khi setup xong, **kioku-lite tự đọc config từ `~/.kioku-lite/config.env`**. Không cần export env vars. Gọi thẳng:
+Sau khi cài, gọi thẳng — không cần export, không cần activate:
 
 ```bash
 kioku-lite save "text"
@@ -208,23 +200,24 @@ User hỏi / "ai là X?" / "hôm qua làm gì?":
 
 ---
 
-## 9. Data locations & isolation
+## 9. Config & Data locations
 
 ```
 ~/.kioku-lite/
-├── config.env                     # Auto-loaded — không cần export thủ công
-└── users/<user_id>/
-    ├── memory/                    # Markdown backup
+└── users/<user_id>/        ← default user_id = "personal"
+    ├── memory/             # Markdown backup
     └── data/
-        └── kioku.db               # SQLite: FTS5 + sqlite-vec + KG graph
+        └── kioku.db        # SQLite: FTS5 + sqlite-vec + KG graph
 ```
 
-Data là **personal memory** — dùng chung mọi project theo `user_id`.
+**Config file `~/.kioku-lite/config.env` là tùy chọn** — chỉ cần khi:
+- Muốn đổi `user_id` toàn cục
+- Muốn dùng embedding provider khác (ollama thay fastembed)
 
 Muốn tách data theo project → thêm `.env` vào project directory:
 ```bash
 echo "KIOKU_LITE_USER_ID=project-x" > .env
-# Project .env override global config
+# Project .env override mọi setting khác
 ```
 
 ---
