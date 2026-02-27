@@ -292,30 +292,73 @@ KIOKU_LITE_EMBED_DIM=1024
 # ── init ───────────────────────────────────────────────────────────────────────
 
 @app.command()
-def init() -> None:
-    """Generate CLAUDE.md + SKILL.md for Claude Code / Cursor agent integration."""
-    RESOURCES = Path(__file__).parent / "resources"
+def init(
+    global_: bool = typer.Option(
+        False, "--global", "-g",
+        help="Install globally into ~/.claude/ — works in ALL projects without re-running init.",
+    ),
+) -> None:
+    """Generate CLAUDE.md + SKILL.md for Claude Code / Cursor agent integration.
 
-    claude_dst = Path.cwd() / "CLAUDE.md"
-    skill_dir = Path.cwd() / ".claude" / "skills" / "kioku-lite"
-    skill_dir.mkdir(parents=True, exist_ok=True)
-    skill_dst = skill_dir / "SKILL.md"
+    By default: writes to the current project directory.
+
+    With --global: installs SKILL.md into ~/.claude/skills/kioku-lite/SKILL.md
+    so Claude Code picks it up in EVERY project automatically. Recommended.
+
+    \b
+    # One-time global setup (recommended):
+    kioku-lite init --global
+
+    # Per-project setup (if you want project-specific):
+    kioku-lite init
+    """
+    RESOURCES = Path(__file__).parent / "resources"
 
     claude_src = RESOURCES / "CLAUDE.agent.md"
     skill_src = RESOURCES / "SKILL.md"
 
     if not claude_src.exists() or not skill_src.exists():
-        typer.echo("⚠️  Resource files not found. Run `pip install kioku-agent-kit-lite[full]`", err=True)
+        typer.echo("⚠️  Resource files not found. Reinstall: pip install 'kioku-lite[cli]'", err=True)
         raise typer.Exit(1)
 
-    claude_dst.write_text(claude_src.read_text(encoding="utf-8"))
-    skill_dst.write_text(skill_src.read_text(encoding="utf-8"))
+    if global_:
+        # Write to ~/.claude/ — Claude Code reads this from any project
+        skill_dir = Path.home() / ".claude" / "skills" / "kioku-lite"
+        skill_dir.mkdir(parents=True, exist_ok=True)
+        skill_dst = skill_dir / "SKILL.md"
+        skill_dst.write_text(skill_src.read_text(encoding="utf-8"))
 
-    typer.echo(f"✅ {claude_dst}")
-    typer.echo(f"✅ {skill_dst}")
-    typer.echo("")
-    typer.echo("Agent is ready! Start Claude Code and ask it to remember things.")
-    typer.echo("")
+        typer.echo("")
+        typer.echo("✅ Global install:")
+        typer.echo(f"   {skill_dst}")
+        typer.echo("")
+        typer.echo("Claude Code will now use kioku-lite in EVERY project automatically.")
+        typer.echo("No need to run `kioku-lite init` per project.")
+        typer.echo("")
+        typer.echo("Note: No CLAUDE.md is written globally — Claude reads SKILL.md via")
+        typer.echo("      the skills directory. To also add a CLAUDE.md to a specific")
+        typer.echo("      project, run `kioku-lite init` (without --global) there.")
+        typer.echo("")
+    else:
+        # Write to current project directory
+        claude_dst = Path.cwd() / "CLAUDE.md"
+        skill_dir = Path.cwd() / ".claude" / "skills" / "kioku-lite"
+        skill_dir.mkdir(parents=True, exist_ok=True)
+        skill_dst = skill_dir / "SKILL.md"
+
+        claude_dst.write_text(claude_src.read_text(encoding="utf-8"))
+        skill_dst.write_text(skill_src.read_text(encoding="utf-8"))
+
+        typer.echo("")
+        typer.echo("✅ Project install:")
+        typer.echo(f"   {claude_dst}")
+        typer.echo(f"   {skill_dst}")
+        typer.echo("")
+        typer.echo("Claude Code will use kioku-lite in THIS project.")
+        typer.echo("")
+        typer.echo("Tip: Run `kioku-lite init --global` once to enable in ALL projects.")
+        typer.echo("")
+
 
 
 if __name__ == "__main__":
