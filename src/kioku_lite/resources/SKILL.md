@@ -10,7 +10,7 @@ description: >
 
 # Kioku Lite — Agent Memory Skill
 
-Kioku Lite là long-term personal memory engine chạy hoàn toàn local. Zero Docker, zero server. Mọi data trong SQLite. **Bạn (agent) tự extract entities → gọi `kg-index`.**
+Kioku Lite là long-term personal memory engine chạy hoàn toàn local. Zero Docker, zero server. Config được tự động đọc từ `~/.kioku-lite/config.env` — không cần export env vars thủ công. **Bạn (agent) tự extract entities → gọi `kg-index`.**
 
 ---
 
@@ -22,59 +22,61 @@ Kioku Lite là long-term personal memory engine chạy hoàn toàn local. Zero D
 kioku-lite --version
 ```
 
-**Nếu command không tồn tại** → cài:
+**Nếu lệnh không tồn tại** → cài bằng `pipx` (recommended — global, không cần venv):
 
 ```bash
-# Tạo venv nếu chưa có (macOS/Linux)
-python3 -m venv .venv
+pipx install "kioku-lite[cli]"
+```
+
+Nếu chưa có `pipx`:
+```bash
+pip install pipx
+pipx ensurepath
+# Restart terminal, rồi chạy lại pipx install
+```
+
+Hoặc cài trong venv của project (nếu không muốn dùng pipx):
+```bash
 source .venv/bin/activate
 pip install "kioku-lite[cli]"
 ```
 
-**Nếu đã có .venv nhưng kioku-lite chưa trong đó:**
+### Bước 1.2 — Kiểm tra config đã setup chưa
+
 ```bash
-source .venv/bin/activate
-pip install "kioku-lite[cli]"
+kioku-lite --version   # nếu OK → chạy lệnh đơn giản này để check
 ```
 
-### Bước 1.2 — Kiểm tra config đã tồn tại chưa
-
+Cụ thể hơn:
 ```bash
 cat ~/.kioku-lite/config.env
 ```
 
-**Nếu file không tồn tại** → chạy setup:
+**Nếu file không tồn tại** → chạy setup (1 lần, mọi project):
 ```bash
-source .venv/bin/activate && kioku-lite setup --user-id personal
+kioku-lite setup --user-id personal
 ```
 
 Setup sẽ:
 1. Tạo `~/.kioku-lite/config.env`
-2. Download embedding model `intfloat/multilingual-e5-large` (~1.1GB, **chỉ lần đầu**)
+2. Download embedding model `intfloat/multilingual-e5-large` (~1.1GB vào `~/.cache/fastembed/`, **chỉ lần đầu**)
 
-⚠️ **Download model có thể mất 2-5 phút.** Chạy xong mới tiếp tục.
-
-### Bước 1.3 — Nếu muốn có SKILL.md hoạt động trên mọi project
-
-```bash
-source .venv/bin/activate && kioku-lite init --global
-```
-
-Tạo `~/.claude/skills/kioku-lite/SKILL.md` — Claude Code tự đọc từ bất kỳ project nào.
+⚠️ Download model lần đầu mất 2-5 phút. Chờ cho xong trước khi tiếp tục.
 
 ---
 
-## 2. Load environment (PHẢI làm trước mỗi lệnh)
+## 2. Chạy lệnh
 
-Vì mỗi bash call là isolated, **luôn dùng prefix sau:**
+Sau khi setup xong, **kioku-lite tự đọc config từ `~/.kioku-lite/config.env`**. Không cần export env vars. Gọi thẳng:
 
 ```bash
-source .venv/bin/activate && export $(grep -v '^#' ~/.kioku-lite/config.env | xargs 2>/dev/null) && kioku-lite <command>
+kioku-lite save "text"
+kioku-lite search "query"
 ```
 
-Nếu không có `.venv` (cài global):
+Nếu cài qua venv (không phải pipx), cần activate trước:
 ```bash
-export $(grep -v '^#' ~/.kioku-lite/config.env | xargs 2>/dev/null) && kioku-lite <command>
+source .venv/bin/activate && kioku-lite save "text"
 ```
 
 ---
@@ -83,10 +85,10 @@ export $(grep -v '^#' ~/.kioku-lite/config.env | xargs 2>/dev/null) && kioku-lit
 
 | Lệnh | Khi nào dùng |
 |---|---|
-| `kioku-lite save "TEXT"` | User chia sẻ thông tin mới cần nhớ |
-| `kioku-lite kg-index HASH …` | Ngay sau save — index entities bạn vừa extract |
-| `kioku-lite search "QUERY"` | Recall, lookup context, tìm memories |
-| `kioku-lite recall "ENTITY"` | Tìm tất cả memories liên quan entity đó |
+| `kioku-lite save "TEXT"` | User chia sẻ thông tin mới |
+| `kioku-lite kg-index HASH …` | Ngay sau save — index entities bạn extract |
+| `kioku-lite search "QUERY"` | Recall, lookup context |
+| `kioku-lite recall "ENTITY"` | Tất cả memories liên quan một entity |
 | `kioku-lite entities` | Xem danh sách entities đã biết |
 | `kioku-lite timeline` | Dòng thời gian memories |
 
@@ -95,17 +97,15 @@ export $(grep -v '^#' ~/.kioku-lite/config.env | xargs 2>/dev/null) && kioku-lit
 ## 4. `kioku-lite save` — Bước 1
 
 ```bash
-source .venv/bin/activate && \
-export $(grep -v '^#' ~/.kioku-lite/config.env | xargs 2>/dev/null) && \
 kioku-lite save "TEXT" --mood MOOD --tags "tag1,tag2" --event-time "YYYY-MM-DD"
 ```
 
 **Output:** JSON với `content_hash` → dùng ngay cho `kg-index`.
 
 **Rules:**
-- ✅ Giữ nguyên **full original text** của user — không tóm tắt, không paraphrase
-- ✅ Text dài (>300 chars) hay nhiều chủ đề → split thành nhiều `save` calls
-- ✅ `--event-time` = khi sự kiện thực sự xảy ra (không phải thời gian hiện tại)
+- ✅ Giữ nguyên **full original text** — không tóm tắt, không paraphrase
+- ✅ Text dài (>300 chars) hay nhiều chủ đề → split thành nhiều saves
+- ✅ `--event-time` = khi sự kiện thực sự xảy ra (không phải bây giờ)
 - ✅ Mood: `happy` | `sad` | `excited` | `anxious` | `grateful` | `proud` | `reflective` | `neutral` | `work` | `curious`
 - ❌ Không thêm editorial comments — lưu thông tin thô
 
@@ -113,11 +113,9 @@ kioku-lite save "TEXT" --mood MOOD --tags "tag1,tag2" --event-time "YYYY-MM-DD"
 
 ## 5. `kioku-lite kg-index` — Bước 2 (CRITICAL)
 
-Sau mỗi `save`, bạn **phải tự extract entities** từ text rồi gọi `kg-index`:
+Sau mỗi `save`, bạn **tự extract entities** rồi gọi `kg-index`:
 
 ```bash
-source .venv/bin/activate && \
-export $(grep -v '^#' ~/.kioku-lite/config.env | xargs 2>/dev/null) && \
 kioku-lite kg-index <content_hash> \
   --entities '[{"name":"Hùng","type":"PERSON"},{"name":"Kioku Lite","type":"PROJECT"}]' \
   --relationships '[{"source":"Hùng","rel_type":"WORKS_ON","target":"Kioku Lite","evidence":"..."}]'
@@ -128,31 +126,29 @@ kioku-lite kg-index <content_hash> \
 **Relationship types:** `KNOWS` | `WORKS_ON` | `WORKS_AT` | `CONTRIBUTED_TO` | `USED_BY` | `LOCATED_AT` | `INVOLVES` | `MENTIONS`
 
 **Extraction rules:**
-- ✅ Tên nguyên gốc: `"Hùng"` không phải `"anh Hùng"`, `"Phúc"` không phải `"tôi"`
+- ✅ Tên nguyên gốc: `"Hùng"` không phải `"anh Hùng"`
 - ✅ Tiếng Việt → tên Việt: `"mẹ"`, `"TBV"`, `"dự án X"`
 - ❌ Bỏ qua từ chung: `"team"`, `"mình"`, `"tôi"`, `"họ"`, `"chúng tôi"`
-- ❌ Chỉ add relationship giữa entities được nhắc rõ ràng trong text
-- ✅ Text không có entities cụ thể → bỏ qua `kg-index` là OK, không cần ép
+- ❌ Chỉ add relationship được nhắc rõ trong text
+- ✅ Không có entities cụ thể → không cần gọi `kg-index`
 
 ---
 
 ## 6. `kioku-lite search` — Enrich first
 
-**Enrich query** trước khi search: thay pronoun bằng tên thật đã biết.
+Enrich query: thay pronoun bằng tên thật đã biết.
 
 ```bash
 # Session start — recall user profile
-source .venv/bin/activate && \
-export $(grep -v '^#' ~/.kioku-lite/config.env | xargs 2>/dev/null) && \
 kioku-lite search "[UserName] profile background work goals recent events" --limit 10
 
-# Person-specific recall
+# Person-specific
 kioku-lite search "Hùng relationship projects meetings recent" --limit 5
 
 # Date range
 kioku-lite search "dự án Kioku milestone" --from 2026-02-01 --to 2026-02-28
 
-# Entity + text combined
+# Entity hint → boost KG recall
 kioku-lite search "TBV roadmap planning" --entities "TBV,Phúc" --limit 10
 ```
 
@@ -161,76 +157,74 @@ kioku-lite search "TBV roadmap planning" --entities "TBV,Phúc" --limit 10
 ## 7. Full workflow example
 
 ```
-User: "Hôm nay tôi họp với Hùng và Lan về dự án Kioku Lite. Lan sẽ viết docs, Hùng lo infra."
+User: "Hôm nay tôi họp với Hùng và Lan về dự án Kioku Lite."
 
 ─── Step 1: Save ───
-kioku-lite save "Hôm nay họp với Hùng và Lan về dự án Kioku Lite. Lan sẽ viết docs, Hùng lo infra." \
+kioku-lite save "Hôm nay họp với Hùng và Lan về dự án Kioku Lite." \
   --mood work --event-time 2026-02-27
 → {"content_hash": "abc123...", "status": "ok"}
 
-─── Step 2: Extract entities (you do this from the text) ───
-Entities:  Hùng (PERSON), Lan (PERSON), Kioku Lite (PROJECT)
-Relations: Hùng WORKS_ON Kioku Lite
-           Lan  WORKS_ON Kioku Lite
-           Hùng KNOWS Lan   (implied — họp cùng nhau)
+─── Step 2: Extract entities ───
+  Hùng (PERSON), Lan (PERSON), Kioku Lite (PROJECT)
+  Hùng → WORKS_ON → Kioku Lite
+  Lan  → WORKS_ON → Kioku Lite
 
 ─── Step 3: kg-index ───
 kioku-lite kg-index abc123 \
   --entities '[{"name":"Hùng","type":"PERSON"},{"name":"Lan","type":"PERSON"},{"name":"Kioku Lite","type":"PROJECT"}]' \
   --relationships '[
-    {"source":"Hùng","rel_type":"WORKS_ON","target":"Kioku Lite","evidence":"Hùng lo infra"},
-    {"source":"Lan","rel_type":"WORKS_ON","target":"Kioku Lite","evidence":"Lan viết docs"}
+    {"source":"Hùng","rel_type":"WORKS_ON","target":"Kioku Lite","evidence":"họp về Kioku Lite"},
+    {"source":"Lan","rel_type":"WORKS_ON","target":"Kioku Lite","evidence":"họp về Kioku Lite"}
   ]'
 ```
 
 ---
 
-## 8. Decision Tree — Session Start
+## 8. Decision Tree — Start of every session
 
 ```
-Bắt đầu conversation mới?
-│
+Bắt đầu conversation?
 └─ Luôn search trước để load context:
    kioku-lite search "[UserName] profile background goals focus" --limit 10
 
 User shares info / "nhớ cái này":
 └─ save → kg-index
 
-User hỏi / recall / "ai là X?" / "hôm qua làm gì?":
-└─ ENRICH → search
+User hỏi / "ai là X?" / "hôm qua làm gì?":
+└─ ENRICH query → search
 
-"Chuyện gì xảy ra hôm [date]?":
-└─ search "events activities [date]" --from DATE --to DATE
+"Chuyện gì ngày [date]?":
+└─ search "events" --from DATE --to DATE
 
-"Kể về X?":
+"Kể về X":
 └─ recall "X" --hops 2
 ```
 
 **Critical rules:**
-- 🚫 Never invent memories. 0 results → nói thật là không có.
-- ✅ Luôn save khi user chia sẻ thông tin có giá trị — không cần đợi được yêu cầu.
-- ✅ Luôn kg-index sau save nếu có entities nhận ra được.
-- ✅ Enrich queries — replace "tôi/tao/mình/anh/chị" bằng tên thật bạn đã biết.
+- 🚫 Never invent memories. 0 results → nói thật.
+- ✅ Luôn save khi user chia sẻ thông tin có giá trị.
+- ✅ Luôn kg-index sau save nếu có entities.
+- ✅ Enrich queries — replace "tôi/mình/anh/chị" bằng tên thật.
 
 ---
 
-## 9. Data locations
+## 9. Data locations & isolation
 
 ```
 ~/.kioku-lite/
-├── config.env                     # KIOKU_LITE_USER_ID, embed settings
+├── config.env                     # Auto-loaded — không cần export thủ công
 └── users/<user_id>/
-    ├── memory/                    # Markdown files (human-readable backup)
-    │   └── YYYY-MM/
-    │       └── <hash>.md
+    ├── memory/                    # Markdown backup
     └── data/
-        └── kioku.db               # SQLite: FTS5 + sqlite-vec + KG graph tables
+        └── kioku.db               # SQLite: FTS5 + sqlite-vec + KG graph
 ```
 
-Default `user_id = personal`. Để tách data theo project:
+Data là **personal memory** — dùng chung mọi project theo `user_id`.
+
+Muốn tách data theo project → thêm `.env` vào project directory:
 ```bash
-# Trong .env của project
-KIOKU_LITE_USER_ID=project-x
+echo "KIOKU_LITE_USER_ID=project-x" > .env
+# Project .env override global config
 ```
 
 ---
@@ -239,8 +233,8 @@ KIOKU_LITE_USER_ID=project-x
 
 | Vấn đề | Giải pháp |
 |---|---|
-| `kioku-lite: command not found` | `source .venv/bin/activate` trước |
-| `~/.kioku-lite/config.env` không có | Chạy `kioku-lite setup --user-id personal` |
-| Search chậm lần đầu (~5s) | Embedding model đang load vào RAM — lần sau nhanh hơn |
-| `sqlite-vec` error | `pip install --upgrade kioku-lite[cli]` |
-| Model download bị interrupt | Chạy lại `kioku-lite setup` — tiếp tục từ đoạn bị dừng |
+| `kioku-lite: command not found` | `pipx install "kioku-lite[cli]"` hoặc `source .venv/bin/activate` |
+| `user_id = default` (không phải `personal`) | Chạy `kioku-lite setup --user-id personal` |
+| Search chậm lần đầu (~5s) | Model đang warm up — lần sau nhanh hơn |
+| Download model bị interrupt | Chạy lại `kioku-lite setup` |
+| `No module named sqlite_vec` | `pip install --upgrade "kioku-lite[cli]"` |

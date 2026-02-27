@@ -35,7 +35,17 @@ class Settings(BaseSettings):
     # User identity hint for entity mapping during search
     user_identity: str = ""
 
-    model_config = {"env_prefix": "KIOKU_LITE_", "env_file": ".env", "extra": "ignore"}
+    model_config = {
+        "env_prefix": "KIOKU_LITE_",
+        # Read from: 1) ~/.kioku-lite/config.env (global user config)
+        #            2) .env in current directory (project-level override)
+        # Later files take precedence — project .env overrides global config.
+        "env_file": [
+            str(Path.home() / ".kioku-lite" / "config.env"),
+            ".env",
+        ],
+        "extra": "ignore",
+    }
 
     def model_post_init(self, __context) -> None:
         """Derive paths from user_id after loading env."""
