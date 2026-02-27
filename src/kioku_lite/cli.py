@@ -208,6 +208,61 @@ def timeline(
     _out(_get_svc().get_timeline(start_date=start_date, end_date=end_date, limit=limit, sort_by=sort_by))
 
 
+# ── users ──────────────────────────────────────────────────────────────────────
+
+@app.command()
+def users(
+    create: Optional[str] = typer.Option(None, "--create", "-c", help="Create a new profile with this ID."),
+) -> None:
+    """List all user profiles, or create a new one.
+
+    At the start of each session, the agent should run this command to show
+    the user their available profiles, then ask which one to use.
+
+    \b
+    # List all profiles:
+    kioku-lite users
+
+    # Create a new profile:
+    kioku-lite users --create work
+    """
+    base_dir = Path.home() / ".kioku-lite" / "users"
+
+    if create:
+        # Validate name
+        if not create.replace("-", "").replace("_", "").isalnum():
+            typer.echo("⚠️  Profile ID can only contain letters, numbers, hyphens and underscores.", err=True)
+            raise typer.Exit(1)
+        profile_dir = base_dir / create / "data"
+        profile_dir.mkdir(parents=True, exist_ok=True)
+        memory_dir = base_dir / create / "memory"
+        memory_dir.mkdir(parents=True, exist_ok=True)
+
+        result = {"status": "created", "user_id": create, "path": str(base_dir / create)}
+        _out(result)
+        typer.echo(f"\nTo use this profile: KIOKU_LITE_USER_ID={create} kioku-lite save \"...\"")
+        return
+
+    # Ensure default profile "personal" always exists
+    default_dir = base_dir / "personal" / "data"
+    default_dir.mkdir(parents=True, exist_ok=True)
+    (base_dir / "personal" / "memory").mkdir(parents=True, exist_ok=True)
+
+    # Scan filesystem — directories = profiles
+    profiles = []
+    if base_dir.exists():
+        for p in sorted(base_dir.iterdir()):
+            if p.is_dir():
+                db = p / "data" / "kioku.db"
+                profiles.append({
+                    "user_id": p.name,
+                    "has_data": db.exists(),
+                    "db_size_kb": round(db.stat().st_size / 1024, 1) if db.exists() else 0,
+                })
+
+    _out({"profiles": profiles, "hint": "Use KIOKU_LITE_USER_ID=<user_id> prefix to switch profiles"})
+
+
 # ── setup ──────────────────────────────────────────────────────────────────────
 
 @app.command()

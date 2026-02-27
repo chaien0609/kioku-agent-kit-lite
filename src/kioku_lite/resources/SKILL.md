@@ -73,26 +73,49 @@ Chọn **per-project nếu** chỉ muốn dùng cho project đó, không ảnh h
 
 ## 2. SESSION START — Bắt đầu mỗi phiên
 
-**Ở đầu mỗi session**, bạn MUST hỏi user muốn dùng danh tính nào:
+**Ở đầu mỗi session**, bạn MUST:
 
-> "🗣️ Bạn muốn dùng Kioku với danh tính nào hôm nay?
-> • `personal` (mặc định — ký ức cá nhân)
-> • `work` (công việc)
-> • Hoặc tên khác bạn muốn?"
-
-Sau khi user trả lời, **dùng `KIOKU_LITE_USER_ID=<id>` prefix cho mọi lệnh** trong session:
-
+**Bước A — Lấy danh sách profiles:**
 ```bash
-# User chọn "personal"
-kioku-lite search "profile background goals" --limit 10
-
-# User chọn "work"
-KIOKU_LITE_USER_ID=work kioku-lite search "profile background goals" --limit 10
-
-# Nếu "personal" (mặc định) thì không cần prefix
+kioku-lite users
 ```
 
-**Lý do hỏi mỗi session:** User có thể có nhiều profile (cá nhân, công ty, project). Data hoàn toàn tách biệt giữa các `user_id`.
+Output ví dụ:
+```json
+{
+  "profiles": [
+    {"user_id": "personal", "has_data": true, "db_size_kb": 512},
+    {"user_id": "work",     "has_data": true, "db_size_kb": 128}
+  ],
+  "hint": "Use KIOKU_LITE_USER_ID=<user_id> prefix to switch profiles"
+}
+```
+
+**Bước B — Hỏi user muốn dùng profile nào:**
+
+> "🗣️ Kioku Lite đang có các profile sau:
+> 1. `personal` (512 KB)
+> 2. `work` (128 KB)
+> Bạn muốn dùng profile nào hôm nay? Hoặc tạo mới?"
+
+Nếu user muốn **tạo profile mới**:
+```bash
+kioku-lite users --create <tên>
+```
+
+**Bước C — Load context của profile đã chọn:**
+```bash
+# Nếu chọn "personal" (default — không cần prefix)
+kioku-lite search "profile background goals recent" --limit 10
+
+# Nếu chọn profile khác — thêm prefix vào mọi lệnh trong session
+KIOKU_LITE_USER_ID=work kioku-lite search "profile background goals recent" --limit 10
+```
+
+**Lưu ý:**
+- Profile `personal` luôn tồn tại (default)
+- Data hoàn toàn tách biệt giữa các profile
+- Profile được lưu tại `~/.kioku-lite/users/<user_id>/`
 
 ---
 
