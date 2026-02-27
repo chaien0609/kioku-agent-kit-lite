@@ -2,19 +2,27 @@
 name = "kioku-agent-kit-lite"
 version = "0.1.0"
 description = "Personal memory engine for AI agents — zero Docker, SQLite-everything (BM25 + sqlite-vec + SQLite graph)"
+readme = "README.md"
 requires-python = ">=3.11"
-license = "MIT"
-authors = [{ name = "Phúc Nguyễn" }]
-keywords = ["memory", "agent", "ai", "rag", "knowledge-graph", "mcp", "claude", "sqlite"]
+license = { file = "LICENSE" }
+authors = [{ name = "Phúc Nguyễn", email = "phuc.nt.dev@gmail.com" }]
+keywords = [
+    "memory", "agent", "ai", "rag", "knowledge-graph",
+    "sqlite", "vector-search", "bm25", "fastembed", "mcp",
+    "llm", "claude", "multilingual", "vietnamese",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Database",
+    "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
 # Core deps — zero Docker required
@@ -22,14 +30,14 @@ dependencies = [
     "pydantic>=2.0",
     "pydantic-settings>=2.0",
     "python-dotenv>=1.0",
-    "sqlite-vec>=0.1.0",       # Vector search extension for SQLite (no server)
-    "fastembed>=0.4.0",        # Local embeddings via ONNX — supports bge-m3 (no Ollama)
+    "sqlite-vec>=0.1.0",    # Vector search extension for SQLite (no server)
+    "fastembed>=0.4.0",     # Local embeddings via ONNX (no Ollama required)
 ]
 
 [project.optional-dependencies]
 cli = ["typer>=0.9"]
 mcp = ["fastmcp>=2.0.0"]
-llm = ["anthropic>=0.40"]      # For Claude entity extraction (optional)
+llm = ["anthropic>=0.40"]   # Claude entity extraction (optional)
 full = [
     "typer>=0.9",
     "fastmcp>=2.0.0",
@@ -45,7 +53,10 @@ dev = [
 kioku-lite = "kioku_lite.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/phuc-nt/kioku-agent-kit-lite"
+Homepage    = "https://github.com/phuc-nt/kioku-agent-kit-lite"
+Repository  = "https://github.com/phuc-nt/kioku-agent-kit-lite"
+Issues      = "https://github.com/phuc-nt/kioku-agent-kit-lite/issues"
+Changelog   = "https://github.com/phuc-nt/kioku-agent-kit-lite/blob/main/CHANGELOG.md"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
