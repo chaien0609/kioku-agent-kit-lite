@@ -32,9 +32,6 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "bge-m3"
 
-    # LLM for entity extraction (optional — degraded gracefully if missing)
-    anthropic_api_key: str = ""
-
     # User identity hint for entity mapping during search
     user_identity: str = ""
 

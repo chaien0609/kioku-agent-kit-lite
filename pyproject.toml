@@ -1,6 +1,6 @@
 [project]
 name = "kioku-lite"
-version = "0.1.1"
+version = "0.1.2"
 description = "Personal memory engine for AI agents — zero Docker, SQLite-everything (BM25 + sqlite-vec + SQLite graph)"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -35,12 +35,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-cli = ["typer>=0.9"]                # CLI commands (kioku-lite save, search, setup, init)
-llm = ["anthropic>=0.40"]           # For agent KG extraction via Claude (optional)
-full = [
-    "typer>=0.9",
-    "anthropic>=0.40",
-]
+cli = ["typer>=0.9"]    # Required for CLI (kioku-lite save, search, setup, init)
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.24",

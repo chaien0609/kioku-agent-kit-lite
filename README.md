@@ -22,14 +22,7 @@
 ## Cài đặt
 
 ```bash
-# CLI + core (recommended)
 pip install "kioku-lite[cli]"
-
-# Core Python API only
-pip install kioku-lite
-
-# Đầy đủ (CLI + Claude LLM extraction)
-pip install "kioku-lite[full]"
 ```
 
 ## Quick Start
