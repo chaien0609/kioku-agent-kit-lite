@@ -216,10 +216,11 @@ def setup(
 ) -> None:
     """First-time setup: create config and download embedding model (no Docker needed).
 
-    The FastEmbed model (bge-m3, ~1GB) is downloaded once to ~/.cache/fastembed/
-    and reused on all subsequent runs.
+    The FastEmbed model (intfloat/multilingual-e5-large, ~1.1GB) is downloaded once
+    to ~/.cache/fastembed/ and reused on all subsequent runs. No Docker required.
     """
     resolved_user_id = user_id or os.environ.get("KIOKU_LITE_USER_ID", "personal")
+    embed_model = "intfloat/multilingual-e5-large"
 
     typer.echo("")
     typer.echo("╔══════════════════════════════════════╗")
@@ -227,15 +228,18 @@ def setup(
     typer.echo("║   Zero Docker · Zero Cloud LLM       ║")
     typer.echo("╚══════════════════════════════════════╝")
     typer.echo("")
-    typer.echo(f"User ID : {resolved_user_id}")
+    typer.echo(f"User ID     : {resolved_user_id}")
+    typer.echo(f"Embed model : {embed_model} (FastEmbed ONNX)")
+    typer.echo("")
 
-    # Config file
+    # Step 1: Config file
+    typer.echo("── Step 1: Configuration ──")
     config_dir = Path.home() / ".kioku-lite"
     config_dir.mkdir(exist_ok=True)
     config_file = config_dir / "config.env"
 
     if config_file.exists():
-        typer.echo(f"  ✅ Config already exists: {config_file}")
+        typer.echo(f"  ✅ Config exists: {config_file}")
     else:
         from datetime import date
         config_file.write_text(
@@ -244,25 +248,26 @@ def setup(
 
 KIOKU_LITE_USER_ID={resolved_user_id}
 
-# Embedding model (FastEmbed ONNX — downloaded on first use, ~1GB)
-KIOKU_LITE_EMBED_MODEL=BAAI/bge-m3
+# Embedding: FastEmbed ONNX — runs 100% local, no Docker
+KIOKU_LITE_EMBED_PROVIDER=fastembed
+KIOKU_LITE_EMBED_MODEL={embed_model}
 KIOKU_LITE_EMBED_DIM=1024
 
-# Set to "fake" to skip model download (BM25 + Graph still work):
+# Set EMBED_PROVIDER=fake to skip model download (BM25 + Graph only):
 # KIOKU_LITE_EMBED_PROVIDER=fake
 """,
             encoding="utf-8",
         )
         typer.echo(f"  ✅ Created: {config_file}")
 
-    # Warm up embedding model (triggers download if first run)
+    # Step 2: Download embedding model
     typer.echo("")
-    typer.echo("── Embedding model (FastEmbed bge-m3) ──")
-    typer.echo("   Downloading on first run (~1GB to ~/.cache/fastembed/)...")
+    typer.echo(f"── Step 2: Embedding model ({embed_model}) ──")
+    typer.echo("   Downloading ~1.1GB to ~/.cache/fastembed/ (once only)...")
     try:
         from kioku_lite.pipeline.embedder import FastEmbedder
-        embedder = FastEmbedder(model_name="BAAI/bge-m3")
-        embedder.embed("test")
+        embedder = FastEmbedder(model_name=embed_model)
+        embedder.embed("warmup")
         typer.echo("  ✅ Embedding model ready")
     except Exception as e:
         typer.echo(f"  ⚠️  Model download failed: {e}")
