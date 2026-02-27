@@ -212,43 +212,62 @@ def timeline(
 
 @app.command()
 def users(
-    create: Optional[str] = typer.Option(None, "--create", "-c", help="Create a new profile with this ID."),
+    create: Optional[str] = typer.Option(None, "--create", "-c", help="Create a new profile."),
+    use: Optional[str] = typer.Option(None, "--use", "-u", help="Set active profile for this session."),
 ) -> None:
-    """List all user profiles, or create a new one.
+    """List all user profiles, create a new one, or switch active profile.
 
-    At the start of each session, the agent should run this command to show
-    the user their available profiles, then ask which one to use.
+    Run at the start of each session to pick which memory profile to use.
+    After --use, all subsequent kioku-lite commands use that profile automatically.
 
     \b
-    # List all profiles:
+    # List profiles:
     kioku-lite users
+
+    # Switch to a profile (no prefix needed after this):
+    kioku-lite users --use work
 
     # Create a new profile:
     kioku-lite users --create work
     """
     base_dir = Path.home() / ".kioku-lite" / "users"
+    active_file = Path.home() / ".kioku-lite" / ".active_user"
 
+    # ── --use: set active session profile ────────────────────────────────────
+    if use:
+        # Profile must exist
+        if not (base_dir / use).exists() and use != "personal":
+            typer.echo(f"⚠️  Profile '{use}' not found. Create it first: kioku-lite users --create {use}", err=True)
+            raise typer.Exit(1)
+        # Ensure dir exists for personal
+        (base_dir / use / "data").mkdir(parents=True, exist_ok=True)
+        (base_dir / use / "memory").mkdir(parents=True, exist_ok=True)
+        # Write active profile file
+        active_file.parent.mkdir(parents=True, exist_ok=True)
+        active_file.write_text(use)
+        _out({"status": "active", "user_id": use, "note": "All subsequent kioku-lite commands will use this profile."})
+        return
+
+    # ── --create: make new profile ────────────────────────────────────────────
     if create:
-        # Validate name
         if not create.replace("-", "").replace("_", "").isalnum():
             typer.echo("⚠️  Profile ID can only contain letters, numbers, hyphens and underscores.", err=True)
             raise typer.Exit(1)
         profile_dir = base_dir / create / "data"
         profile_dir.mkdir(parents=True, exist_ok=True)
-        memory_dir = base_dir / create / "memory"
-        memory_dir.mkdir(parents=True, exist_ok=True)
-
-        result = {"status": "created", "user_id": create, "path": str(base_dir / create)}
-        _out(result)
-        typer.echo(f"\nTo use this profile: KIOKU_LITE_USER_ID={create} kioku-lite save \"...\"")
+        (base_dir / create / "memory").mkdir(parents=True, exist_ok=True)
+        _out({"status": "created", "user_id": create, "path": str(base_dir / create)})
+        typer.echo(f"\nActivate it now: kioku-lite users --use {create}")
         return
 
+    # ── list: show all profiles ───────────────────────────────────────────────
     # Ensure default profile "personal" always exists
-    default_dir = base_dir / "personal" / "data"
-    default_dir.mkdir(parents=True, exist_ok=True)
+    (base_dir / "personal" / "data").mkdir(parents=True, exist_ok=True)
     (base_dir / "personal" / "memory").mkdir(parents=True, exist_ok=True)
 
-    # Scan filesystem — directories = profiles
+    # Read current active profile
+    current_active = active_file.read_text().strip() if active_file.exists() else "personal"
+
     profiles = []
     if base_dir.exists():
         for p in sorted(base_dir.iterdir()):
@@ -256,92 +275,59 @@ def users(
                 db = p / "data" / "kioku.db"
                 profiles.append({
                     "user_id": p.name,
+                    "active": p.name == current_active,
                     "has_data": db.exists(),
                     "db_size_kb": round(db.stat().st_size / 1024, 1) if db.exists() else 0,
                 })
 
-    _out({"profiles": profiles, "hint": "Use KIOKU_LITE_USER_ID=<user_id> prefix to switch profiles"})
-
+    _out({
+        "profiles": profiles,
+        "active_profile": current_active,
+        "hint": "Run 'kioku-lite users --use <user_id>' to switch profiles",
+    })
 
 # ── setup ──────────────────────────────────────────────────────────────────────
 
 @app.command()
-def setup(
-    user_id: Optional[str] = typer.Option(None, "--user-id", "-u", help="Your user ID (default: personal)."),
-) -> None:
-    """First-time setup: create config and download embedding model (no Docker needed).
+def setup() -> None:
+    """Pre-download the embedding model (~1.1GB, first-time only).
 
-    The FastEmbed model (intfloat/multilingual-e5-large, ~1.1GB) is downloaded once
-    to ~/.cache/fastembed/ and reused on all subsequent runs. No Docker required.
+    Optional — kioku-lite works without running this. The model downloads
+    automatically on first use. Run this to eagerly pre-download before
+    going offline, or to verify the local install.
+
+    \b
+    Profile management: kioku-lite users
+    Agent integration:  kioku-lite init --global
     """
-    resolved_user_id = user_id or os.environ.get("KIOKU_LITE_USER_ID", "personal")
     embed_model = "intfloat/multilingual-e5-large"
 
     typer.echo("")
     typer.echo("╔══════════════════════════════════════╗")
-    typer.echo("║   Kioku Agent Kit Lite — Setup       ║")
-    typer.echo("║   Zero Docker · Zero Cloud LLM       ║")
+    typer.echo("║   Kioku Lite — Pre-download Model    ║")
     typer.echo("╚══════════════════════════════════════╝")
-    typer.echo("")
-    typer.echo(f"User ID     : {resolved_user_id}")
-    typer.echo(f"Embed model : {embed_model} (FastEmbed ONNX)")
-    typer.echo("")
+    typer.echo(f"\nModel  : {embed_model}")
+    typer.echo("Target : ~/.cache/fastembed/")
+    typer.echo("Size   : ~1.1GB (once only)\n")
 
-    # Step 1: Config file
-    typer.echo("── Step 1: Configuration ──")
-    config_dir = Path.home() / ".kioku-lite"
-    config_dir.mkdir(exist_ok=True)
-    config_file = config_dir / "config.env"
-
-    if config_file.exists():
-        typer.echo(f"  ✅ Config exists: {config_file}")
-    else:
-        from datetime import date
-        config_file.write_text(
-            f"""# Kioku Agent Kit Lite — Configuration
-# Generated: {date.today()}
-
-KIOKU_LITE_USER_ID={resolved_user_id}
-
-# Embedding: FastEmbed ONNX — runs 100% local, no Docker
-KIOKU_LITE_EMBED_PROVIDER=fastembed
-KIOKU_LITE_EMBED_MODEL={embed_model}
-KIOKU_LITE_EMBED_DIM=1024
-
-# Set EMBED_PROVIDER=fake to skip model download (BM25 + Graph only):
-# KIOKU_LITE_EMBED_PROVIDER=fake
-""",
-            encoding="utf-8",
-        )
-        typer.echo(f"  ✅ Created: {config_file}")
-
-    # Step 2: Download embedding model
-    typer.echo("")
-    typer.echo(f"── Step 2: Embedding model ({embed_model}) ──")
-    typer.echo("   Downloading ~1.1GB to ~/.cache/fastembed/ (once only)...")
     try:
         from kioku_lite.pipeline.embedder import FastEmbedder
         embedder = FastEmbedder(model_name=embed_model)
         embedder.embed("warmup")
-        typer.echo("  ✅ Embedding model ready")
+        typer.echo("\n✅ Model ready.")
     except Exception as e:
-        typer.echo(f"  ⚠️  Model download failed: {e}")
-        typer.echo("      Run `kioku-lite setup` again when online,")
-        typer.echo("      or set KIOKU_LITE_EMBED_PROVIDER=fake to use BM25+Graph only.")
+        typer.echo(f"\n⚠️  Download failed: {e}")
+        typer.echo("   Run again when online.")
+        typer.echo("   Or: KIOKU_LITE_EMBED_PROVIDER=fake kioku-lite save '...'  (BM25+Graph only, no vectors)")
 
+    typer.echo("\nNext steps:")
+    typer.echo("  kioku-lite users --use personal   # pick active profile")
+    typer.echo("  kioku-lite init --global           # inject SKILL.md for Claude Code")
+    typer.echo('  kioku-lite save "Your first memory"')
     typer.echo("")
-    typer.echo("╔══════════════════════════════════════╗")
-    typer.echo("║         Setup Complete! 🎉           ║")
-    typer.echo("╚══════════════════════════════════════╝")
-    typer.echo("")
-    typer.echo("Quick start:")
-    typer.echo(f"  export KIOKU_LITE_USER_ID={resolved_user_id}")
-    typer.echo('  kioku-lite save "Hôm nay gặp Hùng ở café" --mood happy')
-    typer.echo('  kioku-lite search "Hùng"')
-    typer.echo("")
-    typer.echo("For Claude Code / Cursor agents:")
-    typer.echo("  kioku-lite init    # generates CLAUDE.md + SKILL.md")
-    typer.echo("")
+
+
+
 
 
 # ── init ───────────────────────────────────────────────────────────────────────
