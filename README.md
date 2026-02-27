@@ -13,19 +13,23 @@
 - ✅ **Tri-hybrid search** — BM25 (FTS5) + Vector (sqlite-vec) + Knowledge Graph (SQLite)
 - ✅ **Zero Docker** — không cần ChromaDB, FalkorDB hay Ollama server
 - ✅ **FastEmbed ONNX** — embedding local, offline-capable (`intfloat/multilingual-e5-large`)
-- ✅ **Agentless KG** — agent tự extract entities → `kg-index` (không cần built-in LLM)
-- ✅ **CLI + Python API** — dùng trực tiếp hoặc tích hợp vào agent
+- ✅ **Agent-driven KG** — agent tự extract entities → `kg-index` (không cần built-in LLM)
+- ✅ **CLI** — `kioku-lite save`, `search`, `kg-index`, `setup`, `init`
+- ✅ **Python API** — import trực tiếp `KiokuLiteService` vào code
 - ✅ **Multilingual** — tiếng Việt, tiếng Anh và 100+ ngôn ngữ khác
+- 🔜 **MCP server** — planned (v0.2)
 
 ## Cài đặt
 
 ```bash
-pip install kioku-agent-kit-lite
-```
+# CLI + core (recommended)
+pip install "kioku-lite[cli]"
 
-Cho CLI đầy đủ:
-```bash
-pip install "kioku-agent-kit-lite[cli]"
+# Core Python API only
+pip install kioku-lite
+
+# Đầy đủ (CLI + Claude LLM extraction)
+pip install "kioku-lite[full]"
 ```
 
 ## Quick Start

@@ -1,6 +1,6 @@
 [project]
 name = "kioku-lite"
-version = "0.1.0"
+version = "0.1.1"
 description = "Personal memory engine for AI agents — zero Docker, SQLite-everything (BM25 + sqlite-vec + SQLite graph)"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -8,7 +8,7 @@ license = { file = "LICENSE" }
 authors = [{ name = "Phúc Nguyễn", email = "phuc.nt.dev@gmail.com" }]
 keywords = [
     "memory", "agent", "ai", "rag", "knowledge-graph",
-    "sqlite", "vector-search", "bm25", "fastembed", "mcp",
+    "sqlite", "vector-search", "bm25", "fastembed",
     "llm", "claude", "multilingual", "vietnamese",
 ]
 classifiers = [
@@ -35,12 +35,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-cli = ["typer>=0.9"]
-mcp = ["fastmcp>=2.0.0"]
-llm = ["anthropic>=0.40"]   # Claude entity extraction (optional)
+cli = ["typer>=0.9"]                # CLI commands (kioku-lite save, search, setup, init)
+llm = ["anthropic>=0.40"]           # For agent KG extraction via Claude (optional)
 full = [
     "typer>=0.9",
-    "fastmcp>=2.0.0",
     "anthropic>=0.40",
 ]
 dev = [
