@@ -10,7 +10,7 @@ description: >
 
 # Kioku Lite — Agent Memory Skill
 
-Kioku Lite là long-term personal memory engine chạy hoàn toàn local. Zero Docker, zero server. Config được tự động đọc từ `~/.kioku-lite/config.env` — không cần export env vars thủ công. **Bạn (agent) tự extract entities → gọi `kg-index`.**
+Kioku Lite là long-term personal memory engine chạy hoàn toàn local. Zero Docker, zero server. Mọi data trong SQLite. **Bạn (agent) tự extract entities → gọi `kg-index`.**
 
 ---
 
@@ -41,23 +41,62 @@ source .venv/bin/activate && pip install "kioku-lite[cli]"
 
 ### Bước 1.2 — (Tùy chọn) Pre-download embedding model
 
-Kioku-lite tự download model khi dùng lần đầu (~1.1GB). Nếu muốn download trước cho chắc:
+Kioku-lite tự download model khi dùng lần đầu (~1.1GB). Nếu muốn download trước:
 
 ```bash
 kioku-lite setup
 ```
 
-Không cần setup nếu không ngại chờ lần đầu. **Tất cả settings đều có defaults hợp lý.**
+**Tất cả settings đều có defaults hợp lý** — không cần setup nếu không ngại chờ lần đầu.
 
-> **Muốn đổi `user_id` (để tách data theo người/project)?**
-> Thêm file `.env` vào project directory:
-> ```bash
-> echo "KIOKU_LITE_USER_ID=work" > .env
-> ```
+### Bước 1.3 — Init SKILL.md cho agent
+
+Chọn **một trong hai cách** để Claude Code biết dùng kioku-lite:
+
+**Option A — Global (recommended):** Chỉ cần làm 1 lần, tốt đời mọi project
+```bash
+kioku-lite init --global
+# Tạo: ~/.claude/skills/kioku-lite/SKILL.md
+```
+
+**Option B — Per-project:** Chỉ active ở project này
+```bash
+cd /path/to/project
+kioku-lite init
+# Tạo: ./CLAUDE.md + ./.claude/skills/kioku-lite/SKILL.md
+```
+
+Chọn **global nếu** bạn muốn Kioku Lite là personal memory engine theo suốt (recommend).
+Chọn **per-project nếu** chỉ muốn dùng cho project đó, không ảnh hưởng project khác.
 
 ---
 
-## 2. Chạy lệnh
+## 2. SESSION START — Bắt đầu mỗi phiên
+
+**Ở đầu mỗi session**, bạn MUST hỏi user muốn dùng danh tính nào:
+
+> "🗣️ Bạn muốn dùng Kioku với danh tính nào hôm nay?
+> • `personal` (mặc định — ký ức cá nhân)
+> • `work` (công việc)
+> • Hoặc tên khác bạn muốn?"
+
+Sau khi user trả lời, **dùng `KIOKU_LITE_USER_ID=<id>` prefix cho mọi lệnh** trong session:
+
+```bash
+# User chọn "personal"
+kioku-lite search "profile background goals" --limit 10
+
+# User chọn "work"
+KIOKU_LITE_USER_ID=work kioku-lite search "profile background goals" --limit 10
+
+# Nếu "personal" (mặc định) thì không cần prefix
+```
+
+**Lý do hỏi mỗi session:** User có thể có nhiều profile (cá nhân, công ty, project). Data hoàn toàn tách biệt giữa các `user_id`.
+
+---
+
+## 3. Chạy lệnh
 
 Sau khi cài, gọi thẳng — không cần export, không cần activate:
 
