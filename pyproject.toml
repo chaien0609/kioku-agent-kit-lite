@@ -1,5 +1,5 @@
 [project]
-name = "kioku-agent-kit-lite"
+name = "kioku-lite"
 version = "0.1.0"
 description = "Personal memory engine for AI agents — zero Docker, SQLite-everything (BM25 + sqlite-vec + SQLite graph)"
 readme = "README.md"
@@ -57,6 +57,9 @@ Homepage    = "https://github.com/phuc-nt/kioku-agent-kit-lite"
 Repository  = "https://github.com/phuc-nt/kioku-agent-kit-lite"
 Issues      = "https://github.com/phuc-nt/kioku-agent-kit-lite/issues"
 Changelog   = "https://github.com/phuc-nt/kioku-agent-kit-lite/blob/main/CHANGELOG.md"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
