@@ -1,0 +1,64 @@
+[project]
+name = "kioku-agent-kit-lite"
+version = "0.1.0"
+description = "Personal memory engine for AI agents — zero Docker, SQLite-everything (BM25 + sqlite-vec + SQLite graph)"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Phúc Nguyễn" }]
+keywords = ["memory", "agent", "ai", "rag", "knowledge-graph", "mcp", "claude", "sqlite"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# Core deps — zero Docker required
+dependencies = [
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "python-dotenv>=1.0",
+    "sqlite-vec>=0.1.0",       # Vector search extension for SQLite (no server)
+    "fastembed>=0.4.0",        # Local embeddings via ONNX — supports bge-m3 (no Ollama)
+]
+
+[project.optional-dependencies]
+cli = ["typer>=0.9"]
+mcp = ["fastmcp>=2.0.0"]
+llm = ["anthropic>=0.40"]      # For Claude entity extraction (optional)
+full = [
+    "typer>=0.9",
+    "fastmcp>=2.0.0",
+    "anthropic>=0.40",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.8",
+]
+
+[project.scripts]
+kioku-lite = "kioku_lite.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/phuc-nt/kioku-agent-kit-lite"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kioku_lite"]
+artifacts = ["src/kioku_lite/resources/*"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
