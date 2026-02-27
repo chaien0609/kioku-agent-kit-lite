@@ -188,23 +188,100 @@ kioku-lite kg-index <content_hash> \
 
 ---
 
-## 6. `kioku-lite search` — Enrich first
+## 6. `kioku-lite search` — Enriched Search Workflow
 
-Enrich query: thay pronoun bằng tên thật đã biết.
+**Không bao giờ gọi search với raw user query.** Luôn enrich trước:
+
+### Bước 1 — Lấy entity list làm từ điển
 
 ```bash
-# Session start — recall user profile
-kioku-lite search "[UserName] profile background work goals recent events" --limit 10
-
-# Person-specific
-kioku-lite search "Hùng relationship projects meetings recent" --limit 5
-
-# Date range
-kioku-lite search "dự án Kioku milestone" --from 2026-02-01 --to 2026-02-28
-
-# Entity hint → boost KG recall
-kioku-lite search "TBV roadmap planning" --entities "TBV,Phúc" --limit 10
+kioku-lite entities --limit 50
 ```
+
+Output: danh sách `{name, type, mention_count}` đã biết — dùng để map pronouns và inference.
+
+### Bước 2 — Phân tích intent và enrich query
+
+| Case | Dấu hiệu | Hành động |
+|------|----------|-----------|
+| **Pronoun** | "anh ấy", "cô ấy", "nó", "mình", "tôi", "họ" | Map → entity name từ conversation context |
+| **Implicit subject** | "dự án", "công ty", "chỗ làm", "trường" | Map → entity cụ thể đang được nhắc trong context |
+| **Temporal** | "hôm qua", "tuần rồi", "tháng 2", "năm ngoái" | Map → `--from DATE --to DATE` |
+| **Relational** | "bạn của X", "ai làm X", "X ở đâu" | Dùng `recall X` + `explain-connection X Y` |
+| **Thematic** | topic chung không có entity rõ | Dùng semantic search thuần, thêm domain keywords |
+| **Mixed** | kết hợp nhiều loại trên | Áp dụng tất cả transformations |
+
+### Bước 3 — Build enriched query
+
+**Template chuẩn:**
+```
+enriched_query = [ActualEntityName] + [original_keywords] + [domain_context_keywords]
+entities_param = [trực tiếp nhắc + inferred từ type]
+date_range    = [nếu có temporal signal]
+```
+
+**Ví dụ transformations:**
+
+```
+# Case: Pronoun
+"anh ấy làm gì?"
+  → conversation context: đang nhắc Hùng
+  → "Hùng làm gì career work project"  --entities "Hùng"
+
+# Case: Implicit entity
+"dự án đang đến đâu rồi?"
+  → current topic: Kioku Lite
+  → "Kioku Lite progress milestone status" --entities "Kioku Lite"
+
+# Case: Temporal
+"tuần trước có gì?"
+  → date range: 2026-02-17 → 2026-02-23
+  → "events highlights" --from 2026-02-17 --to 2026-02-23
+
+# Case: Relational "ai làm việc cùng X"
+"ai hay làm việc với Phúc?"
+  → kioku-lite recall "Phúc" --hops 2
+  → parse nodes: PERSON entities connected → "Hùng", "Lan"
+
+# Case: Multi-entity relationship
+"Phúc và TBV liên quan thế nào?"
+  → kioku-lite explain-connection "Phúc" "TBV"
+
+# Case: Implicit type mapping
+"project nào Phúc đang làm?"
+  → entities có type PROJECT trong entities list: "Kioku Lite"
+  → "Phúc project work" --entities "Phúc,Kioku Lite"
+
+# Case: Thematic (không có entity rõ)
+"tại sao chọn học tiếng Nhật?"
+  → add domain: "Japan Japanese language motivation reason decision"
+  → kioku-lite search "tại sao học tiếng Nhật Japan motivation decision"
+```
+
+### Bước 4 — Chọn lệnh phù hợp
+
+```bash
+# Standard: text query có thể có entities
+kioku-lite search "ENRICHED_QUERY" --entities "E1,E2" --limit 10
+
+# Entity deep dive: tất cả memories liên quan 1 entity + graph traversal
+kioku-lite recall "ENTITY" --hops 2 --limit 15
+
+# Two-entity path: giải thích mối liên hệ 2 entities
+kioku-lite explain-connection "ENTITY_A" "ENTITY_B"
+
+# Temporal slice: memories trong khoảng thời gian
+kioku-lite search "TOPIC keywords" --from YYYY-MM-DD --to YYYY-MM-DD
+
+# Recent timeline: chronological view
+kioku-lite timeline --limit 20
+```
+
+### Bước 5 — Sau khi nhận kết quả
+
+- Kết quả có `content_hash` — có thể dùng để `kg-index` thêm entities nếu cần
+- 0 results → thông báo thật, không đoán  
+- Confidence thấp (score < 0.02) → nói rõ "có thể liên quan, nhưng không chắc"
 
 ---
 
