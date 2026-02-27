@@ -84,38 +84,38 @@ Output ví dụ:
 ```json
 {
   "profiles": [
-    {"user_id": "personal", "has_data": true, "db_size_kb": 512},
-    {"user_id": "work",     "has_data": true, "db_size_kb": 128}
+    {"user_id": "personal", "active": true,  "has_data": true,  "db_size_kb": 512},
+    {"user_id": "work",     "active": false, "has_data": false, "db_size_kb": 0}
   ],
-  "hint": "Use KIOKU_LITE_USER_ID=<user_id> prefix to switch profiles"
+  "active_profile": "personal",
+  "hint": "Run 'kioku-lite users --use <user_id>' to switch profiles"
 }
 ```
 
 **Bước B — Hỏi user muốn dùng profile nào:**
 
-> "🗣️ Kioku Lite đang có các profile sau:
-> 1. `personal` (512 KB)
-> 2. `work` (128 KB)
+> "🗣️ Kioku Lite đang có các profile:
+> 1. `personal` ✓ active (512 KB)
+> 2. `work` (trống)
 > Bạn muốn dùng profile nào hôm nay? Hoặc tạo mới?"
 
 Nếu user muốn **tạo profile mới**:
 ```bash
 kioku-lite users --create <tên>
+kioku-lite users --use <tên>
 ```
 
-**Bước C — Load context của profile đã chọn:**
+**Bước C — Activate và load context:**
 ```bash
-# Nếu chọn "personal" (default — không cần prefix)
-kioku-lite search "profile background goals recent" --limit 10
+# Activate profile (ghi vào ~/.kioku-lite/.active_user)
+kioku-lite users --use <profile_name>
 
-# Nếu chọn profile khác — thêm prefix vào mọi lệnh trong session
-KIOKU_LITE_USER_ID=work kioku-lite search "profile background goals recent" --limit 10
+# Từ đây mọi lệnh TỰ ĐỘNG dùng profile đó — không cần prefix
+kioku-lite search "profile background goals recent" --limit 10
+kioku-lite save "text"
 ```
 
-**Lưu ý:**
-- Profile `personal` luôn tồn tại (default)
-- Data hoàn toàn tách biệt giữa các profile
-- Profile được lưu tại `~/.kioku-lite/users/<user_id>/`
+**Lưu ý:** `users --use` chỉ cần gọi 1 lần đầu session. Sau đó gọi `save`/`search` bình thường.
 
 ---
 
