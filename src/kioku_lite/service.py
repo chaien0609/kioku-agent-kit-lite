@@ -12,8 +12,16 @@ from __future__ import annotations
 import hashlib
 import logging
 import re
+import warnings
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
+
+# Suppress fastembed pooling-method change warning (cosmetic, not functional)
+warnings.filterwarnings(
+    "ignore",
+    message=".*mean pooling.*CLS embedding.*",
+    category=UserWarning,
+)
 
 from kioku_lite.config import Settings
 from kioku_lite.pipeline.db import KiokuDB
@@ -231,14 +239,21 @@ class KiokuLiteService:
             if r.content_hash and r.content_hash in hydrated:
                 entry = hydrated[r.content_hash]
                 output.append({
-                    "content": entry["text"], "date": entry.get("date", r.date),
-                    "mood": entry.get("mood", r.mood), "score": round(r.score, 4),
+                    "content": entry["text"],
+                    "date": entry.get("date", r.date),
+                    "mood": entry.get("mood", r.mood),
+                    "score": round(r.score, 4),
                     "source": r.source,
+                    "content_hash": r.content_hash,
                 })
             else:
                 output.append({
-                    "content": r.content, "date": r.date, "mood": r.mood,
-                    "score": round(r.score, 4), "source": r.source,
+                    "content": r.content,
+                    "date": r.date,
+                    "mood": r.mood,
+                    "score": round(r.score, 4),
+                    "source": r.source,
+                    "content_hash": r.content_hash or "",
                 })
 
         # Graph context for entity-focused search
@@ -300,7 +315,10 @@ class KiokuLiteService:
             "connected_count": len(result.nodes),
             "nodes": [{"name": n.name, "type": n.type, "mention_count": n.mention_count} for n in result.nodes],
             "relationships": [{"source": e.source, "target": e.target, "type": e.rel_type, "weight": round(e.weight, 2)} for e in result.edges],
-            "source_memories": [{"content": v["text"], "date": v.get("date", ""), "mood": v.get("mood", "")} for v in hydrated.values()],
+            "source_memories": [
+                {"content": v["text"], "date": v.get("date", ""), "mood": v.get("mood", ""), "content_hash": k}
+                for k, v in hydrated.items()
+            ],
         }
 
     def explain_connection(self, entity_a: str, entity_b: str) -> dict:

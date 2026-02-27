@@ -72,8 +72,17 @@ class MemoryStore:
     # ── Search ─────────────────────────────────────────────────────────────────
 
     def search_fts(self, query: str, limit: int = 20) -> list[FTSResult]:
-        """BM25 keyword search via FTS5. Returns results ordered by relevance."""
-        safe_query = '"' + query.replace('"', '""') + '"'
+        """BM25 keyword search via FTS5. Returns results ordered by relevance.
+
+        Uses term search (each word matched independently) so Vietnamese
+        multi-word queries work correctly. Falls back to phrase search if
+        the query is a single token.
+        """
+        # Escape any FTS5 special characters in each token, then join with space
+        # This means each word is searched independently (OR-like via BM25 scoring)
+        tokens = query.strip().split()
+        safe_tokens = ['"' + t.replace('"', '""') + '"' for t in tokens if t]
+        safe_query = " ".join(safe_tokens) if safe_tokens else '""'
         cur = self.conn.cursor()
         try:
             cur.execute(
@@ -169,7 +178,7 @@ class MemoryStore:
         where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
         cur = self.conn.cursor()
         cur.execute(
-            f"SELECT content, date, mood, timestamp, tags, event_time FROM memories "
+            f"SELECT content, date, mood, timestamp, tags, event_time, content_hash FROM memories "
             f"{where} ORDER BY {order_col} DESC LIMIT ?",
             (*params, limit),
         )
@@ -177,6 +186,7 @@ class MemoryStore:
             {
                 "text": r[0], "date": r[1], "mood": r[2], "timestamp": r[3],
                 "tags": json.loads(r[4]) if r[4] else [], "event_time": r[5] or "",
+                "content_hash": r[6] or "",
             }
             for r in cur.fetchall()
         ]
