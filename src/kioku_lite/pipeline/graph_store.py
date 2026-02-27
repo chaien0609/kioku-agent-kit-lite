@@ -69,7 +69,10 @@ class GraphStore:
         self.conn.commit()
 
     def add_alias(self, alias: str, canonical: str) -> None:
-        """Register an alias → canonical SAME_AS mapping."""
+        """Register an alias → canonical SAME_AS mapping. Skips if alias == canonical."""
+        if alias.strip().lower() == canonical.strip().lower():
+            log.debug("Skipping self-alias: '%s' == '%s'", alias, canonical)
+            return
         cur = self.conn.cursor()
         for name in (alias, canonical):
             cur.execute(

@@ -21,18 +21,21 @@ class Settings(BaseSettings):
     memory_dir: Path | None = None
     data_dir: Path | None = None
 
-    # Embedding provider: "fastembed" (default, local ONNX) or "fake" (testing)
+    # Embedding provider: "ollama" | "fastembed" | "fake"
     embed_provider: str = "fastembed"
-    # Model name — must be supported by fastembed (bge-m3 ✓)
-    embed_model: str = "BAAI/bge-m3"
-    # Embedding dimensions — bge-m3 produces 1024-dim
+    # Model name for fastembed OR Ollama model name
+    embed_model: str = "intfloat/multilingual-e5-large"
+    # Embedding dimensions
     embed_dim: int = 1024
+
+    # Ollama connection (used when embed_provider="ollama")
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_model: str = "bge-m3"
 
     # LLM for entity extraction (optional — degraded gracefully if missing)
     anthropic_api_key: str = ""
 
     # User identity hint for entity mapping during search
-    # e.g. "Nguyễn Trọng Phúc, also known as phuc-nt, anh"
     user_identity: str = ""
 
     model_config = {"env_prefix": "KIOKU_LITE_", "env_file": ".env", "extra": "ignore"}

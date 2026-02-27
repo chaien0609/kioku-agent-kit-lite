@@ -56,10 +56,13 @@ class KiokuLiteService:
         self.settings.ensure_dirs()
 
         self.db = KiokuDB(self.settings.db_path, embed_dim=self.settings.embed_dim)
+        ollama_model = getattr(self.settings, "ollama_model", "bge-m3")
+        ollama_url   = getattr(self.settings, "ollama_base_url", "http://localhost:11434")
         self.embedder = make_embedder(
             provider=self.settings.embed_provider,
-            model=self.settings.embed_model,
+            model=ollama_model if self.settings.embed_provider == "ollama" else self.settings.embed_model,
             dim=self.settings.embed_dim,
+            base_url=ollama_url,
         )
 
     # ── save_memory ────────────────────────────────────────────────────────────
