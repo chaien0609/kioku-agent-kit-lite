@@ -1,294 +1,200 @@
-# TESTLOG — Enriched Search E2E (2026-02-28)
+# Test Log: Enriched Search & Session Management
 
-**Version:** v0.1.3
-**Tester:** Claude Code (AI agent, đóng vai user thực tế theo SKILL.md)
-**Profile:** `search-test` (isolated, xoá sau khi test)
-**Scope:** Toàn bộ workflow CLI + 8 search cases + edge cases
-
----
-
-## Môi trường
-
-```
-kioku-lite v0.1.3 (source install, .venv)
-Python 3.x, SQLite FTS5 + sqlite-vec
-Embedder: fastembed (intfloat/multilingual-e5-large, 1024-dim)
-Platform: macOS, Mac Mini
-```
+**Ngày:** 2026-02-28  
+**Tester:** Claude Code (Opus 4.5)  
+**Versions tested:** 0.1.10 → 0.1.11 → 0.1.12 → 0.1.13  
+**Profile:** personal  
+**Environment:** macOS Darwin 25.1.0, Python 3.13.4, pipx
 
 ---
 
-## Test Data
+## 1. Bugs Found & Fixed
 
-6 memories với entities/relationships đầy đủ:
+### BUG-01 — BM25 Search Always Returns 0 Results
+**Version found:** 0.1.10  
+**Fixed:** 0.1.11  
+**Severity:** High (P1)
 
-| ID | Event time | Nội dung | Mood | Entities |
-|----|------------|----------|------|----------|
-| M1 | 2026-02-28 | Họp team Minh & Hùng, sprint planning Kioku Lite v0.2 | work | Minh, Hùng, Kioku Lite |
-| M2 | 2026-02-28 | Lo lắng về deadline dự án 15/3 | anxious | Kioku Lite, deadline 15/3 |
-| M3 | 2026-02-26 | Gặp Lan ở Starbucks Đinh Tiên Hoàng, Lan học tiếng Nhật, đăng ký JLPT N3 | happy | Lan, Starbucks ĐTH, JLPT N3, tiếng Nhật |
-| M4 | 2026-02-25 | Hùng kể từng làm senior engineer ở TechCorp 4 năm, TechCorp fintech ở HN | curious | Hùng, TechCorp, Hà Nội |
-| M5 | 2026-02-24 | Minh ấp ủ startup AI productivity tools | excited | Minh, AI productivity tools |
-| M6 | 2026-02-28 | Quyết định học Rust vào tháng 3 | excited | Rust, systems programming |
+**Root cause:**  
+`search_fts()` trong `memory_store.py` wrap toàn bộ query với dấu ngoặc kép → FTS5 phrase search.  
+Query "Techbase Việt Nam TBV BrSE 2019" phải match đúng phrase đó trong content → 0 results.
 
-**Aliases đã đăng ký:** `"anh Hùng"`, `"hung"` → canonical `"Hùng"` · `"cô Lan"`, `"chị Lan"` → canonical `"Lan"`
+```python
+# Before (0.1.10) — phrase match, fail với multi-word
+safe_query = '"' + query.replace('"', '""') + '"'
 
----
-
-## Kết quả các test cases chính
-
-### ✅ Case 1 — Pronoun Resolution
-
-**Tình huống:** User hỏi *"anh ấy đang làm gì dạo này?"* trong khi đang nói về Hùng.
-
-| Bước | Agent thực hiện | Kết quả |
-|------|----------------|---------|
-| Map pronoun | "anh ấy" → "Hùng" từ conversation context | ✅ |
-| Enrich query | `"Hùng career work project" --entities "Hùng"` | ✅ |
-| Results | 3 results: TechCorp memory (BM25 top), sprint meeting, deadline (via graph) | ✅ |
-| graph_context | 6 nodes: Hùng, Kioku Lite, TechCorp, Minh, Hà Nội, deadline 15/3 | ✅ |
-
-**Nhận xét:** BM25 rank đúng (TechCorp memory lên top vì có "Hùng" + từ khoá career/work). Graph context đưa ra đầy đủ connected nodes.
-
----
-
-### ✅ Case 2 — Implicit Subject Mapping
-
-**Tình huống:** User hỏi *"dự án đang đến đâu rồi?"* trong khi đang bàn về Kioku Lite.
-
-| Bước | Agent thực hiện | Kết quả |
-|------|----------------|---------|
-| Map implicit | "dự án" → "Kioku Lite" từ context | ✅ |
-| Enrich query | `"Kioku Lite progress milestone status sprint" --entities "Kioku Lite"` | ✅ |
-| Results (count) | 4 results | ✅ |
-| Top result | Sprint planning memory (BM25 score 0.0325 — top) | ✅ |
-| Result 2 | Deadline anxiety memory (graph link Kioku Lite → deadline 15/3) | ✅ |
-
-**Nhận xét:** Graph context quan trọng — memory M2 (deadline/anxious) được kéo vào qua edge `Kioku Lite → INVOLVES → deadline 15/3`, mặc dù không mention "Kioku Lite" trong text. Đây là lợi thế của KG.
-
----
-
-### ✅ Case 3 — Temporal Range
-
-**Tình huống:** User hỏi về ngày cụ thể và khoảng thời gian.
-
-| Query gốc | Enrichment | Kết quả |
-|-----------|-----------|---------|
-| "hôm qua có gì?" | `--from 2026-02-27 --to 2026-02-27` | 5 results (event_time = 2026-02-27) ✅ |
-| "trong tuần này" | `timeline --from 2026-02-23 --to 2026-02-28 --sort-by event_time` | 5 entries đúng thứ tự bi-temporal ✅ |
-
-**Nhận xét:** `timeline --sort-by event_time` hiển thị đúng thứ tự sự kiện thực tế (không phải thứ tự ghi nhận). Bi-temporal modeling hoạt động đúng — M2 và M1 có `event_time: 2026-02-28`, M3 có `2026-02-26`, M5 có `2026-02-24`.
-
-**⚠️ Lưu ý:** `--from/--to` filter trên `search` dùng `date` field (processing_time), không phải `event_time`. Dùng `timeline --sort-by event_time` để query theo thời gian sự kiện.
-
----
-
-### ✅ Case 4 — Relational Queries
-
-#### 4a — "ai hay làm việc với Hùng?" → `recall "Hùng" --hops 2`
-
-```
-connected_count: 6
-nodes: Hùng, Kioku Lite, TechCorp, deadline 15/3, Minh, Hà Nội
-relationships:
-  Hùng → WORKS_ON → Kioku Lite (0.9)
-  Hùng → WORKS_AT → TechCorp (0.85)
-  Kioku Lite → INVOLVES → deadline 15/3 (0.95)
-  Minh → WORKS_ON → Kioku Lite (0.9)
-  TechCorp → LOCATED_AT → Hà Nội (0.8)
-source_memories: 3 memories hydrated ✅
+# After (0.1.11) — term match, mỗi từ search độc lập
+tokens = query.strip().split()
+safe_tokens = ['"' + t.replace('"', '""') + '"' for t in tokens if t]
+safe_query = " ".join(safe_tokens)
 ```
 
-**Kết quả:** Agent có thể trả lời: *"Người làm việc cùng Hùng: Minh (cùng Kioku Lite). Hùng từng ở TechCorp (Hà Nội). Kioku Lite đang có deadline 15/3."*
+**Verification:**  
+- "Techbase Việt Nam TBV BrSE 2019" → `source: "bm25"` xuất hiện trong results ✅
+- Query pronoun sau enrich → bm25 + graph mixed sources ✅
 
-#### 4b — "Lan và Hùng liên quan thế nào?" → `connect "Lan" "Hùng"`
+---
 
+### BUG-02 — content_hash Missing from Search/Recall/Timeline Output
+**Version found:** 0.1.10  
+**Fixed:** 0.1.11  
+**Severity:** High (P0)
+
+**Root cause:**  
+`search_memories()` trong `service.py` hydrate nội dung đúng (call `get_by_hashes()`),  
+nhưng không include `content_hash` trong output dict → agent mất reference để `kg-index` memory cũ.
+
+**Fix:** Add `"content_hash": r.content_hash` vào output của:
+- `search_memories()` — mỗi result item
+- `recall_entity()` — mỗi `source_memories` item  
+- `get_timeline()` — mỗi entry (thêm `content_hash` vào query SQL)
+
+**Verification:**
 ```json
-{ "connected": false, "paths": [] }
+{
+  "content": "Phúc đang build kioku-lite...",
+  "source": "bm25",
+  "content_hash": "15db370db4e8e0ed2bc87f16b2a684b51e80d6beabf98822bff0cad1a1bc705f"
+}
 ```
-
-**Kết quả:** Đúng — trong dataset này Lan không có edge nào tới Kioku Lite (chỉ Minh + Hùng mới work on Kioku Lite ở M1), nên không có path. Agent phản hồi trung thực: *"Chưa có mối liên hệ trực tiếp nào được ghi nhận giữa Lan và Hùng."*
+✅ `search`, `recall`, `timeline` đều có `content_hash`
 
 ---
 
-### ✅ Case 5 — Multi-Entity Search
+### BUG-03 — SKILL.md Typo: `explain-connection` → `connect`
+**Version found:** 0.1.12  
+**Fixed:** 0.1.13  
+**Severity:** Medium (doc bug)
 
-**Tình huống:** *"Project nào Minh đang làm?"* → agent lấy entity list, thấy `Kioku Lite (PROJECT)` và `AI productivity tools (CONCEPT)`.
+SKILL.md section 6 dùng `kioku-lite explain-connection` (3 chỗ),  
+nhưng CLI command thực tế là `kioku-lite connect`.
 
-```
-Query: "Minh project work startup AI tools"
-Entities: "Minh,Kioku Lite,AI productivity tools"
-Results: 4 (Deadline memory top via graph, Sprint planning #2, TechCorp #3, Startup idea #4)
-```
+**Locations fixed:**
+- Line 210: bảng query type → action
+- Line 248: example transformation
+- Line 271: bước 4 command reference
 
-**⚠️ Ranking issue:** `deadline` memory lên top (#1, score 0.0164) qua graph route, dù không liên quan đến câu hỏi. Sprint planning và Startup idea (#2, #4) mới là best answers.
-
-**Nguyên nhân:** Graph từ `Minh → Kioku Lite → INVOLVES → deadline 15/3` tạo noise khi expand 2-hop. Agent cần filter by relevance threshold hoặc chỉ dùng top results trong `graph_context.nodes`.
-
----
-
-### ✅ Case 6 — Thematic Search (Không có entity rõ)
-
-**Tình huống:** *"Dạo này tại sao hay lo lắng?"* — không có proper noun nào.
-
-```
-Query: "lo lắng anxious worry stress cảm xúc tiêu cực"
-Top result: M2 (deadline/anxious) — score 0.0164, source: vector ✅
-Result #2-5: unrelated memories với score thấp (0.015x)
-```
-
-**Kết quả:** Vector search tìm đúng M2 ở top 1. Khoảng cách score rõ ràng (0.0164 vs 0.015x). Agent nên present result #1 với confidence cao, còn #2-5 là background noise.
+**Verification:** `kioku-lite --help | grep connect` → `connect` ✅
 
 ---
 
-### ✅ Case 7 — Alias Resolution
+### BUG-04 — Embedding Model Warning Spam
+**Version found:** 0.1.10  
+**Fixed:** 0.1.11  
+**Severity:** Low (P2)
 
-```
-recall "anh Hùng" --hops 1
-→ connected_count: 3 (Hùng, Kioku Lite, TechCorp)
-→ ALIAS RESOLVED: True ✅
-```
+FastEmbed thay đổi pooling từ CLS → mean, output warning mỗi lần chạy.  
+Không ảnh hưởng functionality nhưng noise trong output.
 
-`"anh Hùng"` → canonical `"Hùng"` → đầy đủ graph traversal. Hoạt động đúng cho tất cả aliases đã đăng ký.
+**Fix:**
+```python
+warnings.filterwarnings("ignore", message=".*mean pooling.*CLS embedding.*", category=UserWarning)
+```
 
 ---
 
-### ✅ Case 8 — Temporal Auto-Detect trong Query
+## 2. Features Verified Working
 
-Unit test 5 patterns:
-
-| Query | Expected | Result |
-|-------|----------|--------|
-| `"năm nay tôi làm gì"` | `2026-01-01 → 2026-12-31` | ✅ OK |
-| `"năm ngoái có gì"` | `2025-01-01 → 2025-12-31` | ✅ OK |
-| `"tháng 2/2026"` | `2026-02-01 → 2026-02-28` | ✅ OK |
-| `"something from 2024"` | `2024-01-01 → 2024-12-31` | ✅ OK |
-| `"no temporal hint"` | `(None, None)` | ✅ OK |
-
----
-
-## Edge Cases
-
-### ⚠️ Edge Case A — "Không có kết quả" (Nonsensical query)
-
-```
-Query: "xyzzy_never_exists_token_123456"
-Expected: 0 results
-Actual: 5 results (tất cả source: vector, score 0.0154–0.0164)
-```
-
-**Phân tích:** Vector search (cosine similarity) **luôn trả về K nearest neighbors**, bất kể query vô nghĩa đến đâu. BM25 và Graph đúng (0 results), nhưng vector "fill in" 5 results với score thấp.
-
-**Impact:** SKILL.md có note *"Confidence thấp (score < 0.02) → nói rõ 'có thể liên quan, nhưng không chắc'"*. Agent PHẢI áp threshold này — không được present vector results có score < 0.02 như là relevant memories.
-
-**Khuyến nghị:** Cân nhắc thêm minimum score filter ở service level, hoặc thêm `"low_confidence"` flag trong response khi tất cả results có score < threshold.
-
----
-
-### ⚠️ Edge Case B — Duplicate Save
+### 2.1 Session Start Flow (v0.1.8+)
 
 ```bash
-kioku-lite save "Duplicate test memory content"  # hash: cb6269df...
-kioku-lite save "Duplicate test memory content"  # hash: cb6269df... (same)
+kioku-lite users                    # list profiles với active flag
+kioku-lite users --use personal     # set active, ghi ~/.kioku-lite/.active_user
+kioku-lite search "..." --limit 10  # auto dùng active profile, không cần prefix
 ```
 
-```
-Vector insert failed: UNIQUE constraint failed on memory_vec primary key
-DEDUP OK: same hash returned ✅
-```
-
-**Phân tích:** Dedup logic đúng — `content_hash` unique constraint prevent double-insert vào `memories` table. Tuy nhiên:
-1. `status: "saved"` được trả về cho lần 2, dù thực ra là **duplicate** (không có insert nào xảy ra)
-2. Warning `Vector insert failed: UNIQUE constraint failed` log ra stderr — user thấy warning mỗi lần save duplicate
-
-**Khuyến nghị:** Return `"status": "duplicate"` (hoặc `"already_exists": true`) khi `memory_store.insert()` returns `-1`, thay vì `"status": "saved"`.
+✅ Profile isolation: `~/.kioku-lite/users/<id>/data/kioku.db`  
+✅ No env var prefix needed sau `--use`
 
 ---
 
-### ✅ Edge Case C — Connect Disconnected Entities
+### 2.2 Save + KG-Index Workflow
 
-```
-connect "Lan" "Rust"  →  connected: false, paths: []
-```
+5 memories saved thành công:
 
-Đúng — không có path, response honest. Agent không hallucinate connection.
+| # | Content summary | Mood | Hash prefix |
+|---|-----------------|------|-------------|
+| 1 | Nguyễn Trọng Phúc — thông tin cá nhân | neutral | 3a93c22a |
+| 2 | Làm việc tại Nhật, vị trí BrSE | work | 021e37fb |
+| 3 | Chọn TBV để tiếp tục BrSE | work | d8b564c5 |
+| 4 | Học Tiếng Nhật vì "ít người học" | reflective | 863b0de3 |
+| 5 | Build kioku-lite — Python + SQLite | work | 15db370d |
 
----
-
-## Tổng kết
-
-### Pass/Fail Summary
-
-| Category | Tests | Pass | Fail | Note |
-|----------|-------|------|------|------|
-| Workflow (save/kg-index/users) | 3 | 3 | 0 | |
-| Search — Pronoun | 1 | 1 | 0 | |
-| Search — Implicit Subject | 1 | 1 | 0 | |
-| Search — Temporal | 2 | 2 | 0 | |
-| Search — Relational (recall/connect) | 2 | 2 | 0 | |
-| Search — Multi-entity | 1 | 1 | 0 | ⚠️ Graph noise issue |
-| Search — Thematic | 1 | 1 | 0 | |
-| Alias Resolution | 1 | 1 | 0 | |
-| Temporal Auto-Detect | 5 | 5 | 0 | |
-| Edge: No results | 1 | 0 | 1 | Vector always returns results |
-| Edge: Duplicate save | 1 | 0 | 1 | status misleading |
-| Edge: Disconnected connect | 1 | 1 | 0 | |
-| **TOTAL** | **20** | **18** | **2** | |
+10 entities indexed, 7 relationships.  
+✅ `content_hash` từ `save` dùng ngay cho `kg-index`
 
 ---
 
-## Bugs / Issues Tìm Thấy
+### 2.3 Tri-Hybrid Search Results (v0.1.11)
 
-### BUG-1 — `connect` không hydrate `source_memories` (từ session trước)
-
-**File:** `src/kioku_lite/pipeline/graph_store.py` → `find_path()`
-**Mô tả:** Khi build path edges trong `find_path`, code không copy `source_hash` từ DB vào `GraphEdge`. Kết quả: `service.explain_connection()` không thể hydrate source memories.
-**Tác động:** `source_memories` luôn rỗng khi dùng `connect`, mặc dù edges có `source_hash` trong DB.
-**Severity:** Medium — chức năng recall vẫn hoạt động, chỉ thiếu evidence text.
-
-```python
-# graph_store.py, find_path() — current (broken):
-edges.append(GraphEdge(source=path[i], target=path[i+1], rel_type=rel, evidence=ev))
-# ← Thiếu source_hash=? từ adj dict
-
-# Fix: cần lưu source_hash khi build adj list:
-adj.setdefault(s.lower(), []).append((t, rel, ev, source_hash))
-# Và truyền vào GraphEdge khi build path.
-```
-
-### BUG-2 — `save` trả `status: "saved"` cho duplicate
-
-**File:** `src/kioku_lite/service.py` → `save_memory()`
-**Mô tả:** `memory_store.insert()` trả `-1` khi duplicate, nhưng `save_memory()` không check giá trị này → luôn trả `status: "saved"`.
-**Tác động:** Agent không thể phân biệt memory mới vs duplicate. Gây noise warning ở stderr.
-
-```python
-# service.py — fix đề xuất:
-row_id = self.db.memory.insert(...)
-status = "saved" if row_id != -1 else "duplicate"
-```
-
-### ISSUE-3 — Vector search không có minimum score filter
-
-**Mô tả:** `search` luôn trả K results từ vector leg, kể cả khi query hoàn toàn không liên quan.
-**Tác động:** Agent dễ bị confused nếu không kiểm tra score threshold.
-**Workaround:** Agent MUST filter results với `score < 0.02` và label là "low confidence" (đã document trong SKILL.md).
-
-### ISSUE-4 — Graph noise trong multi-entity search
-
-**Mô tả:** Khi search với nhiều entities, 2-hop graph expansion có thể kéo vào memories không relevant qua indirect connections.
-**Ví dụ:** Query "Minh project" với entities `[Minh, Kioku Lite]` → deadline memory lên top via `Minh→Kioku Lite→deadline`.
-**Tác động:** Ranking bị ảnh hưởng, agent phải dựa vào `source` field để đánh giá trust level (bm25 > vector > graph).
+| Query type | Expected source | Actual |
+|------------|----------------|--------|
+| Semantic — "cầu nối Việt Nam Nhật Bản" | vector | ✅ vector |
+| Exact keyword — "Techbase Việt Nam TBV" | bm25 | ✅ bm25 (fixed) |
+| Entity-boosted — `--entities "Phúc,kioku-lite"` | graph | ✅ graph |
+| Enriched pronoun — "Phúc làm gì career work" | bm25+graph | ✅ mixed |
 
 ---
 
-## Đề xuất cải tiến
+### 2.4 Enriched Search Workflow (v0.1.12)
 
-| Priority | Item | Effort |
-|----------|------|--------|
-| P1 | Fix BUG-1: `source_hash` trong `find_path` | Small |
-| P1 | Fix BUG-2: `status: "duplicate"` cho duplicate saves | Small |
-| P2 | Thêm score threshold filter (vd: min_score param) | Medium |
-| P2 | `--version` flag cho CLI | Small |
-| P3 | Graph noise: weight decay theo hop count | Medium |
-| P3 | `search` filter theo `event_time` (hiện chỉ filter theo `date`) | Medium |
+6 query cases tested:
+
+| Case | Input | Enriched command | Result |
+|------|-------|-----------------|--------|
+| Pronoun | "anh ấy làm gì?" | `search "Phúc làm gì career" --entities "Phúc,kioku-lite"` | ✅ bm25 + graph |
+| Implicit entity | "công ty đang làm gì?" | `search "TBV công ty work" --entities "TBV,Phúc"` | ✅ bm25 + graph |
+| Type inference | "Phúc dùng tool gì?" | `search "Phúc tool build" --entities "Phúc,Python,SQLite,kioku-lite"` | ✅ bm25 + graph |
+| Temporal | "2019 có gì?" | `search "events 2019" --from 2019-01-01 --to 2019-12-31` | ✅ date filtered |
+| Relational | "SQLite liên quan gì đến Phúc?" | `connect "Phúc" "SQLite"` | ✅ path: Phúc→kioku-lite→SQLite |
+| Alias | "techbase có gì?" | `search --entities "techbase"` | ✅ maps → TBV |
+
+---
+
+### 2.5 Knowledge Graph Features
+
+```bash
+kioku-lite connect "Phúc" "SQLite"
+# → {"connected": true, "paths": [["Phúc", "kioku-lite", "SQLite"]]}
+
+kioku-lite kg-alias "TBV" --aliases '["Techbase Việt Nam","techbase"]'
+# → search "techbase" → canonical TBV node trong graph_context
+```
+
+✅ Multi-hop path finding (2 hops)  
+✅ Alias/canonical mapping  
+✅ `graph_context.evidence` trả về full original text của edge source
+
+---
+
+## 3. Known Limitations (Not Bugs)
+
+| Item | Note |
+|------|------|
+| BM25 với pure semantic query | Expected — BM25 chỉ match keyword, vector handle semantic |
+| vector 100% khi data ít (<10 memories) | Expected — vector luôn có result, BM25 cần exact token match |
+| Spiderum JS URLs không load | WebFetch limitation, không liên quan kioku-lite |
+| Model download lần đầu ~1.1GB | Expected, one-time |
+
+---
+
+## 4. Version Changelog Summary
+
+| Version | Changes |
+|---------|---------|
+| 0.1.8 | `kioku-lite users` + `--use` + `.active_user` session file |
+| 0.1.9 | Remove `config.env` completely, clean profile management |
+| 0.1.10 | SKILL.md session start rewrite dùng `users --use` |
+| **0.1.11** | **BUG FIX: BM25 term search; content_hash in all outputs; suppress fastembed warning** |
+| 0.1.12 | SKILL.md Section 6: enriched search workflow (5 steps, 6 case types) |
+| **0.1.13** | **BUG FIX: SKILL.md `explain-connection` → `connect` (3 occurrences)** |
+
+---
+
+## 5. Open Items
+
+None. All identified bugs fixed as of v0.1.13.
+
+---
+
+*Log compiled from Claude Code test reports — 2026-02-28*
