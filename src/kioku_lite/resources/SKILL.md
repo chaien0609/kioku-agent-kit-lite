@@ -207,7 +207,7 @@ Output: danh sách `{name, type, mention_count}` đã biết — dùng để map
 | **Pronoun** | "anh ấy", "cô ấy", "nó", "mình", "tôi", "họ" | Map → entity name từ conversation context |
 | **Implicit subject** | "dự án", "công ty", "chỗ làm", "trường" | Map → entity cụ thể đang được nhắc trong context |
 | **Temporal** | "hôm qua", "tuần rồi", "tháng 2", "năm ngoái" | Map → `--from DATE --to DATE` |
-| **Relational** | "bạn của X", "ai làm X", "X ở đâu" | Dùng `recall X` + `explain-connection X Y` |
+| **Relational** | "bạn của X", "ai làm X", "X ở đâu" | Dùng `recall X` + `connect X Y` |
 | **Thematic** | topic chung không có entity rõ | Dùng semantic search thuần, thêm domain keywords |
 | **Mixed** | kết hợp nhiều loại trên | Áp dụng tất cả transformations |
 
@@ -245,7 +245,7 @@ date_range    = [nếu có temporal signal]
 
 # Case: Multi-entity relationship
 "Phúc và TBV liên quan thế nào?"
-  → kioku-lite explain-connection "Phúc" "TBV"
+  → kioku-lite connect "Phúc" "TBV"
 
 # Case: Implicit type mapping
 "project nào Phúc đang làm?"
@@ -268,7 +268,7 @@ kioku-lite search "ENRICHED_QUERY" --entities "E1,E2" --limit 10
 kioku-lite recall "ENTITY" --hops 2 --limit 15
 
 # Two-entity path: giải thích mối liên hệ 2 entities
-kioku-lite explain-connection "ENTITY_A" "ENTITY_B"
+kioku-lite connect "ENTITY_A" "ENTITY_B"
 
 # Temporal slice: memories trong khoảng thời gian
 kioku-lite search "TOPIC keywords" --from YYYY-MM-DD --to YYYY-MM-DD
