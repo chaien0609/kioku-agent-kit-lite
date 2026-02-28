@@ -252,12 +252,12 @@ class GraphStore:
     def find_path(self, source: str, target: str) -> GraphSearchResult:
         """BFS shortest path between two entities (undirected)."""
         cur = self.conn.cursor()
-        cur.execute("SELECT source, target, rel_type, evidence FROM kg_edges")
-        adj: dict[str, list[tuple[str, str, str]]] = {}
+        cur.execute("SELECT source, target, rel_type, evidence, source_hash FROM kg_edges")
+        adj: dict[str, list[tuple[str, str, str, str]]] = {}
         for row in cur.fetchall():
-            s, t, rel, ev = row[0], row[1], row[2] or "", row[3] or ""
-            adj.setdefault(s.lower(), []).append((t, rel, ev))
-            adj.setdefault(t.lower(), []).append((s, rel, ev))
+            s, t, rel, ev, sh = row[0], row[1], row[2] or "", row[3] or "", row[4] or ""
+            adj.setdefault(s.lower(), []).append((t, rel, ev, sh))
+            adj.setdefault(t.lower(), []).append((s, rel, ev, sh))
 
         queue: deque[tuple[str, list[str]]] = deque([(source.lower(), [source])])
         visited = {source.lower()}
@@ -269,12 +269,12 @@ class GraphStore:
                 edges = []
                 for i in range(len(path) - 1):
                     a, b = path[i].lower(), path[i + 1].lower()
-                    for nb, rel, ev in adj.get(a, []):
+                    for nb, rel, ev, sh in adj.get(a, []):
                         if nb.lower() == b:
-                            edges.append(GraphEdge(source=path[i], target=path[i + 1], rel_type=rel, evidence=ev))
+                            edges.append(GraphEdge(source=path[i], target=path[i + 1], rel_type=rel, evidence=ev, source_hash=sh))
                             break
                 return GraphSearchResult(nodes=nodes, edges=edges, paths=[path])
-            for neighbor, _, _ in adj.get(current, []):
+            for neighbor, _, _, _ in adj.get(current, []):
                 if neighbor.lower() not in visited:
                     visited.add(neighbor.lower())
                     queue.append((neighbor.lower(), path + [neighbor]))

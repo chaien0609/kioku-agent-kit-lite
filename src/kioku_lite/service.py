@@ -332,7 +332,7 @@ class KiokuLiteService:
             "connected": len(result.paths) > 0,
             "paths": result.paths,
             "nodes": [{"name": n.name, "type": n.type} for n in result.nodes],
-            "source_memories": [{"content": v["text"], "date": v.get("date", "")} for v in hydrated.values()],
+            "source_memories": [{"content": v["text"], "date": v.get("date", ""), "mood": v.get("mood", ""), "content_hash": k} for k, v in hydrated.items()],
         }
 
     # ── list / timeline ────────────────────────────────────────────────────────
