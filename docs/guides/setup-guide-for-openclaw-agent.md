@@ -62,20 +62,19 @@ This generates two files:
 
 OpenClaw uses a different file convention than the open standard. The developer agent should **derive** the OpenClaw-specific files from the files generated in Step 3:
 
-### 4a. Create `SOUL.md` — from `AGENTS.md` + profile `SKILL.md`
+### 4a. Create `SOUL.md` — from `AGENTS.md`
 
-Create `~/.openclaw/workspace-<name>/SOUL.md` by combining:
-- **Persona & role** → from `AGENTS.md` (Agent Role, Space description)
-- **Identity & tone** → from `~/.agents/skills/kioku-<name>/SKILL.md` (Identity section)
-- **Memory directives** → from `~/.agents/skills/kioku-<name>/SKILL.md` (Core Directives / Persona-Specific Workflow)
+`AGENTS.md` already contains everything needed for `SOUL.md`: space context, agent role, memory directives, and language handling. Simply adapt its content into OpenClaw's format:
 
-Key directives to include in SOUL.md:
+```markdown
+# SOUL.md — <Agent Name>
+
+<Paste the content of AGENTS.md here, expanded into prose paragraphs if desired>
 ```
-1. Save all new shared information with `kioku-lite save` (verbatim, no summarizing)
-2. Immediately call `kioku-lite kg-index` after each save
-3. Always enrich queries before searching
-4. Respond in the user's language (auto-detect)
-```
+
+> No need to pull from the profile SKILL.md — `AGENTS.md` covers persona, role, and directives completely.
+
+
 
 ### 4b. Create `TOOLS.md` — reference SKILL files by path, do NOT copy content
 
