@@ -55,16 +55,15 @@ You extract entities from text — the engine does NOT do this automatically.
 kioku-lite kg-index <content_hash> \
   --entities '[
     {"name": "Alice", "type": "PERSON"},
-    {"name": "Project X", "type": "PROJECT"}
+    {"name": "Argument with boss", "type": "LIFE_EVENT"},
+    {"name": "Stress", "type": "EMOTION"}
   ]' \
   --relationships '[
-    {"source": "Alice", "rel_type": "WORKS_ON", "target": "Project X", "evidence": "working on project X"}
+    {"source": "Stress", "rel_type": "TRIGGERED_BY", "target": "Argument with boss", "evidence": "felt stressed after argument"}
   ]'
 ```
 
-**Entity types:** `PERSON` | `PROJECT` | `PLACE` | `TOOL` | `CONCEPT` | `ORGANIZATION` | `EVENT`
-
-**Companion persona schema — use these INSTEAD:**
+**Companion persona schema:**
 - Entity types: `PERSON` | `EMOTION` | `LIFE_EVENT` | `COPING_MECHANISM` | `PLACE`
 - Relation types: `TRIGGERED_BY` | `REDUCED_BY` | `BROUGHT_JOY` | `SHARED_MOMENT_WITH` | `HAPPENED_AT`
 
