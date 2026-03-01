@@ -120,20 +120,22 @@ Read the full CLI documentation from:
 
 ## Step 5 — Create Kioku Profile
 
-**Profile name = the OpenClaw agent ID** (the `id` field you set in `openclaw.json` → `agents.list`).
+**Profile name = the workspace name** — the `<name>` part of `~/.openclaw/workspace-<name>/` that you already chose.
 
-The OpenClaw agent cannot query its own Telegram Bot ID at runtime, so use the agent ID instead — it's developer-controlled, stable, and unique per deployment.
+The OpenClaw agent cannot query its own Telegram Bot ID at runtime. Using the workspace name is the simplest solution: it's developer-controlled, unique per deployment, and already defined before this step.
 
 ```bash
-# Example: agent id is "kioku-companion"
-kioku-lite users --create <AGENT_ID>
-kioku-lite users --use <AGENT_ID>
+# Example: workspace is ~/.openclaw/workspace-my-companion/
+kioku-lite users --create my-companion
+kioku-lite users --use my-companion
 
 # Verify:
 kioku-lite users
 ```
 
 Also replace `<AGENT_ID>` and `<UserName>` placeholders in `TOOLS.md`.
+
+
 
 ---
 
