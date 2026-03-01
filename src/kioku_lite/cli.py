@@ -381,21 +381,22 @@ def init(
         typer.echo("      project, run `kioku-lite init` (without --global) there.")
         typer.echo("")
     else:
-        # Write to current project directory
-        claude_dst = Path.cwd() / "CLAUDE.md"
-        skill_dir = Path.cwd() / ".claude" / "skills" / "kioku-lite"
+        # Write to current project directory — use open standard (AGENTS.md + .agents/skills)
+        agents_dst = Path.cwd() / "AGENTS.md"
+        skill_dir = Path.cwd() / ".agents" / "skills" / "kioku-lite"
         skill_dir.mkdir(parents=True, exist_ok=True)
         skill_dst = skill_dir / "SKILL.md"
 
-        claude_dst.write_text(claude_src.read_text(encoding="utf-8"))
+        agents_dst.write_text(claude_src.read_text(encoding="utf-8"))
         skill_dst.write_text(skill_src.read_text(encoding="utf-8"))
 
         typer.echo("")
         typer.echo("✅ Project install:")
-        typer.echo(f"   {claude_dst}")
+        typer.echo(f"   {agents_dst}")
         typer.echo(f"   {skill_dst}")
         typer.echo("")
-        typer.echo("Claude Code will use kioku-lite in THIS project.")
+        typer.echo("Your AI agent will use kioku-lite in THIS project.")
+        typer.echo("(Works with Claude Code, Cursor, Windsurf, and any AGENTS.md-aware agent.)")
         typer.echo("")
         typer.echo("Tip: Run `kioku-lite init --global` once to enable in ALL projects.")
         typer.echo("")
