@@ -402,5 +402,65 @@ def init(
 
 
 
+
+# ── install-profile ────────────────────────────────────────────────────────────
+
+@app.command()
+def install_profile(
+    profile_name: str = typer.Argument(..., help="The profile name to install (e.g. companion, mentor)."),
+) -> None:
+    """Install an Agent Skill profile (e.g., companion, mentor).
+    
+    This copies the predefined SKILL.md for the requested profile into 
+    ~/.agents/skills/kioku-<profile_name>/SKILL.md, and creates an AGENTS.md 
+    in the current directory to activate it.
+    """
+    RESOURCES = Path(__file__).parent / "resources" / "profiles"
+    profile_dir = RESOURCES / profile_name
+
+    if not profile_dir.exists() or not profile_dir.is_dir():
+        typer.echo(f"⚠️  Profile '{profile_name}' not found. Available profiles:", err=True)
+        if RESOURCES.exists():
+            for p in RESOURCES.iterdir():
+                if p.is_dir():
+                    typer.echo(f"  - {p.name}")
+        raise typer.Exit(1)
+
+    skill_src = profile_dir / "SKILL.md"
+    agents_src = profile_dir / "AGENTS.md"
+
+    if not skill_src.exists() or not agents_src.exists():
+        typer.echo(f"⚠️  Profile '{profile_name}' is incomplete or corrupted.", err=True)
+        raise typer.Exit(1)
+
+    # 1. Install SKILL.md into global Agent Skills directory
+    dest_skill_dir = Path.home() / ".agents" / "skills" / f"kioku-{profile_name}"
+    dest_skill_dir.mkdir(parents=True, exist_ok=True)
+    dest_skill_file = dest_skill_dir / "SKILL.md"
+    dest_skill_file.write_text(skill_src.read_text(encoding="utf-8"))
+
+    # 2. Install AGENTS.md into current directory
+    dest_agents_file = Path.cwd() / "AGENTS.md"
+    # If AGENTS.md already exists, append to it instead of overwriting, though it's 
+    # generally better to just warn. We'll warn and write a new one if it doesn't exist,
+    # or append if the user accepts (simplification: just write if missing, append if present)
+    if not dest_agents_file.exists():
+        dest_agents_file.write_text(agents_src.read_text(encoding="utf-8"))
+        agent_msg = f"Created {dest_agents_file}"
+    else:
+        # Append separated by a newline
+        existing = dest_agents_file.read_text(encoding="utf-8")
+        append_text = "\n\n" + agents_src.read_text(encoding="utf-8")
+        dest_agents_file.write_text(existing + append_text)
+        agent_msg = f"Appended constraints to existing {dest_agents_file}"
+
+    typer.echo("")
+    typer.echo(f"✅ Profile '{profile_name}' installed successfully.")
+    typer.echo(f"   [{dest_skill_file}] - Agent Skill (Global)")
+    typer.echo(f"   [{agent_msg}] - Workspace Context")
+    typer.echo("")
+    typer.echo(f"Make sure you select the right profile with: kioku-lite users --use {profile_name}")
+    typer.echo("")
+
 if __name__ == "__main__":
     app()
