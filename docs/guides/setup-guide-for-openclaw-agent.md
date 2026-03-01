@@ -10,7 +10,6 @@
 - OpenClaw gateway is running (`openclaw gateway status` → active)
 - At least one agent workspace exists (e.g., `~/.openclaw/workspace-<name>/`)
 - A chatbot is bound to the agent (Telegram or other channel)
-- The agent's `SOUL.md` defines the persona/purpose
 
 ---
 
@@ -44,7 +43,7 @@ ln -sf "$(which kioku-lite)" ~/.omnara/bin/kioku-lite
 env -i PATH="/Users/$USER/.omnara/bin:/opt/homebrew/bin:/usr/bin:/bin" kioku-lite --help
 ```
 
-> If `~/.omnara/bin` doesn't exist, check `~/.openclaw/openclaw.json` for the `PATH` set in the gateway environment, or look at an existing working agent's symlinks.
+> If `~/.omnara/bin` doesn't exist, check `~/.openclaw/openclaw.json` for the gateway PATH, or look at an existing working agent's symlinks.
 
 ---
 
@@ -77,115 +76,33 @@ kioku-lite users   # active_profile should be <BOT_ID>
 
 ---
 
-## Step 4 — Update Workspace Files
+## Step 4 — Install Workspace Files
 
-Navigate to the agent's workspace (e.g., `~/.openclaw/workspace-<name>/`) and update or create these files:
+Choose the profile that matches the agent's persona, then run:
 
-### 4a. `TOOLS.md` — CLI Reference for the Agent
+```bash
+# Emotional Companion persona
+kioku-lite install-openclaw companion ~/.openclaw/workspace-<name>
 
-Replace or create `TOOLS.md` with the following content:
+# OR: Business & Career Mentor persona
+kioku-lite install-openclaw mentor ~/.openclaw/workspace-<name>
+```
 
-```markdown
-# TOOLS.md — Kioku Lite CLI
+This copies pre-built **`SOUL.md`** and **`TOOLS.md`** into the workspace:
 
-**Base command:** `kioku-lite` (global install, no venv activation needed)
-
-## Session Start — Run at the beginning of EVERY session
-
-Step 1: Check active profile
-\`\`\`bash
-kioku-lite users
-\`\`\`
-
-- If `active_profile` is already `<BOT_ID>` → proceed to Step 2
-- If NOT → run: `kioku-lite users --use <BOT_ID>`
-
-> ⚠️ Profile `<BOT_ID>` contains real user data. Never switch to `personal` or other profiles during a live session.
-
-Step 2: Load context
-\`\`\`bash
-kioku-lite search "<User name> profile background goals recent" --limit 10
-\`\`\`
-
-## Core Commands
-
-| Command | When to use |
+| File | What it provides |
 |---|---|
-| `kioku-lite save "TEXT" --mood MOOD --tags "t1,t2" --event-time YYYY-MM-DD` | User shares new information |
-| `kioku-lite kg-index HASH --entities '[...]' --relationships '[...]'` | Immediately after every save |
-| `kioku-lite search "ENRICHED_QUERY" --entities "A,B" --limit 10` | User asks about something |
-| `kioku-lite recall "ENTITY" --hops 2 --limit 15` | Deep dive on one entity |
-| `kioku-lite connect "A" "B"` | Connection between two entities |
-| `kioku-lite timeline --from DATE --to DATE --limit 20` | Chronological view |
-| `kioku-lite entities --limit 50` | See entity vocabulary |
-| `kioku-lite kg-alias "CANONICAL" --aliases '["alias1","alias2"]'` | Register aliases |
+| `SOUL.md` | Persona, memory directives, tone, language handling |
+| `TOOLS.md` | Full CLI reference, entity schema, session start protocol, decision tree |
 
-Mood values: `happy` | `sad` | `excited` | `anxious` | `grateful` | `proud` | `reflective` | `neutral` | `work` | `curious`
+After running, **open `TOOLS.md`** in the workspace and replace:
+- `<BOT_ID>` → the actual Telegram Bot ID (integer)
+- `<UserName>` → the user's name (for context loading at session start)
 
-## kg-index — Entity Extraction Rules
-
-YOU extract entities from the text — the engine does not do this automatically.
-
-- ✅ Use exact name form: `"Alice"` not `"my friend Alice"`
-- ✅ Entity names in the user's original language — do NOT translate
-- ❌ Skip generic words: `"I"`, `"we"`, `"they"`, `"team"`, `"it"`
-- ❌ Only add relationships explicitly stated in the text
-- ✅ No specific entities → skip kg-index
-
-Entity types: `PERSON` | `PROJECT` | `PLACE` | `TOOL` | `CONCEPT` | `ORGANIZATION` | `EVENT`
-Relation types: `KNOWS` | `WORKS_ON` | `WORKS_AT` | `CONTRIBUTED_TO` | `USED_BY` | `LOCATED_AT` | `INVOLVES` | `MENTIONS`
-
-## Search Enrichment — Always Enrich Before Searching
-
-Never pass the raw user query to search. Always enrich first:
-- Replace pronouns with real names ("I" → user's name, "he" → entity name from context)
-- Add domain context keywords
-- Use `--entities` for KG-focused boost
-
-## Decision Tree
-
-\`\`\`
-Session start?
-└─ Check profile → load context with search
-
-User shares new info / "remember this":
-└─ save → extract entities → kg-index
-
-User asks a question:
-└─ ENRICH query → search
-
-User asks about one specific entity:
-└─ recall "entity" --hops 2
-
-User asks how X relates to Y:
-└─ connect "X" "Y"
-
-"What happened yesterday/last week?":
-└─ timeline --from DATE --to DATE
-\`\`\`
-
-Never invent memories. 0 results → be honest.
-```
-
-### 4b. `SOUL.md` — Add Memory Directives
-
-Add these directives to the existing `SOUL.md` (without replacing the persona):
-
-```markdown
-## Memory Directives (Kioku Lite)
-
-1. **Save all new information** — whenever the user shares events, emotions, or facts:
-   - Call `kioku-lite save` with the verbatim original text (DO NOT summarize or paraphrase)
-   - If content is long (>300 chars) or multi-topic, split into separate saves
-   - Immediately call `kioku-lite kg-index` after each save — this is non-negotiable
-
-2. **Query** — always enrich before searching:
-   - Replace pronouns with real names
-   - Use `recall` for one entity, `connect` for relationships between two entities
-
-3. **Language** — respond in the same language the user writes in (auto-detect).
-   Entity names are stored in the user's original language. Entity types always use English labels.
-```
+> **Note on existing SOUL.md:** If the workspace already has a `SOUL.md` with a custom persona, the command will overwrite it. Backup first if needed:
+> ```bash
+> cp ~/.openclaw/workspace-<name>/SOUL.md ~/.openclaw/workspace-<name>/SOUL.md.bak
+> ```
 
 ---
 
@@ -210,7 +127,7 @@ Open the chatbot and send a test message. The agent should:
 2. When you share info: `save` + `kg-index` immediately
 3. When you ask: enrich → `search` / `recall` / `connect`
 
-Quick test — send: `"I just had an amazing bowl of ramen for lunch."` → agent should save it and respond warmly.
+Quick test — send: `"I just had an amazing bowl of ramen for lunch."` → agent should save it and respond warmly (companion) or analytically (mentor).
 
 ---
 
@@ -219,9 +136,9 @@ Quick test — send: `"I just had an amazing bowl of ramen for lunch."` → agen
 | Environment | Profile name | When to use |
 |---|---|---|
 | Production (live bot) | `<BOT_ID>` (integer) | Agent instructions — real user data |
-| Development / testing | `test-<uuid>` or any name | Pytest, manual dev testing |
+| Development / testing | `test-<uuid>` or any name | Manual testing, development |
 
-> ⚠️ Never run tests against the production profile. Always set `KIOKU_USER_ID=test-...` or use a separate profile when developing.
+> ⚠️ Never run tests against the production profile. Always use a separate `test-*` profile when developing.
 
 ---
 
@@ -230,8 +147,7 @@ Quick test — send: `"I just had an amazing bowl of ramen for lunch."` → agen
 | Symptom | Cause | Fix |
 |---|---|---|
 | `kioku-lite: command not found` in gateway logs | LaunchAgent PATH missing `~/.local/bin` | Check symlink: `ls -la ~/.omnara/bin/kioku-lite` |
-| Agent using wrong profile | `users --use` not called at session start | Add profile check to `TOOLS.md` session start section |
-| `connect` returns `source_memories: []` | Package older than v0.1.14 | `uv tool upgrade kioku-lite` or `pipx upgrade kioku-lite` |
+| Agent using wrong profile | `users --use` not called at session start | Check `TOOLS.md` session start section |
 | Slow first response | Embedding model not pre-downloaded | Run `kioku-lite setup` |
 | `No module named sqlite_vec` | Environment mismatch | Reinstall: `uv tool install "kioku-lite[cli]" --force` |
 
@@ -245,6 +161,9 @@ When a new version of kioku-lite is released:
 uv tool upgrade kioku-lite
 # or: pipx upgrade kioku-lite
 
-# Re-inject SKILL.md if using global agent skills:
-kioku-lite init --global
+# Re-install workspace files to get updated SOUL.md + TOOLS.md:
+kioku-lite install-openclaw <profile> ~/.openclaw/workspace-<name>
+
+# Restart gateway:
+openclaw gateway restart
 ```
