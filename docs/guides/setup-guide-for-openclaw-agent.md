@@ -77,13 +77,13 @@ Key directives to include in SOUL.md:
 4. Respond in the user's language (auto-detect)
 ```
 
-### 4b. Create `TOOLS.md` — from global SKILL.md + profile schema
+### 4b. Create `TOOLS.md` — reference SKILL files by path, do NOT copy content
 
-Create `~/.openclaw/workspace-<name>/TOOLS.md` with:
-
-1. **Session start protocol** (add this at the top):
+Create `~/.openclaw/workspace-<name>/TOOLS.md` with the following structure:
 
 ```markdown
+# TOOLS.md — Kioku Lite CLI
+
 ## Session Start — Run at the beginning of EVERY session
 
 Step 1: Verify active profile
@@ -93,17 +93,29 @@ kioku-lite users
 - If `active_profile` is already `<BOT_ID>` → proceed
 - If NOT → `kioku-lite users --use <BOT_ID>`
 
+> ⚠️ Profile `<BOT_ID>` is real user data. Never switch to `personal` or `test-*` during a live session.
+
 Step 2: Load context
 \`\`\`bash
 kioku-lite search "<UserName> profile background goals recent" --limit 10
 \`\`\`
+
+---
+
+## CLI Reference
+
+Read the full CLI documentation from:
+- **Commands, search enrichment, decision tree:** `~/.agents/skills/kioku-lite/SKILL.md`
+- **Identity, KG schema (entity & relation types for this persona):** `~/.agents/skills/kioku-<name>/SKILL.md`
+
+> The KG schema in `kioku-<name>/SKILL.md` takes precedence over any generic types in the global skill.
 ```
 
-2. **CLI reference** → copy the **Core Commands** and **Decision Tree** sections from `~/.agents/skills/kioku-lite/SKILL.md` (the global skill)
+**Why reference by path instead of copy-pasting?**
+- Always up-to-date when `kioku-lite init --global` or `install-profile` is re-run on upgrade
+- Single source of truth — no drift between TOOLS.md and the actual SKILL files
+- OpenClaw agents can read files natively; referencing by path is equivalent
 
-3. **KG Schema** → copy the **KG Schema** section from `~/.agents/skills/kioku-<name>/SKILL.md` (the profile skill) — this overrides the generic entity/relation types in the global skill
-
-> **Important note for TOOLS.md KG schema section:** The profile-specific schema (`EMOTION`, `LIFE_EVENT`, etc. for companion / `DECISION`, `LESSON_LEARNED`, etc. for mentor) takes precedence over the generic types in global SKILL.md.
 
 ---
 
