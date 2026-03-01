@@ -194,7 +194,7 @@ openclaw gateway status
 
 Open the chatbot and test. The agent should:
 
-1. Session start: check profile → activate `<BOT_ID>` if needed → load context
+1. Session start: check profile → activate workspace name if needed → load context
 2. User shares info: `save` + `kg-index` immediately
 3. User asks: enrich → `search` / `recall` / `connect`
 
@@ -206,7 +206,7 @@ Quick test: `"I just had an amazing bowl of ramen for lunch."` → agent saves a
 
 | Environment | Profile name | When to use |
 |---|---|---|
-| Production (live bot) | `<BOT_ID>` (integer) | Real user data |
+| Production (live bot) | workspace name (e.g. `my-companion`) | Real user data |
 | Development / testing | `test-<uuid>` or any name | Testing only |
 
 > ⚠️ Never test against the production profile.
