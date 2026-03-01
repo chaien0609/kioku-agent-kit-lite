@@ -1,122 +1,182 @@
 # Setup Guide: Kioku Lite for an OpenClaw Agent
 
-> For an OpenClaw agent that already has the basic workspace and chatbot (Telegram or otherwise) running.
-> Hand this file to the OpenClaw **developer agent (Claude Code)** — it will execute all steps autonomously.
+> **For the OpenClaw developer agent (Claude Code).**
+> OpenClaw supports the same AGENTS.md / SKILL.md open standard — run the same install commands as for any general agent, then adapt the output files into OpenClaw's workspace format.
 
 ---
 
 ## Prerequisites (already done)
 
 - OpenClaw gateway is running (`openclaw gateway status` → active)
-- At least one agent workspace exists (e.g., `~/.openclaw/workspace-<name>/`)
-- A chatbot is bound to the agent (Telegram or other channel)
+- An agent workspace exists or will be created (e.g., `~/.openclaw/workspace-<name>/`)
+- A Telegram bot (or other chatbot) is ready to be bound
 
 ---
 
 ## Step 1 — Install kioku-lite CLI
 
-Install as a global tool so it works from LaunchAgent PATH:
-
 ```bash
-# Recommended: uv tool (cleanest, no venv needed)
 uv tool install "kioku-lite[cli]"
+# or: pipx install "kioku-lite[cli]"
 
-# Alternative: pipx
-pipx install "kioku-lite[cli]"
-```
-
-Verify:
-
-```bash
-kioku-lite --help
-```
-
-
-
-
----
-
-## Step 2 — Pre-download Embedding Model (Recommended)
-
-The model (~1.1 GB) auto-downloads on first use. Pre-download to avoid slow first response:
-
-```bash
-kioku-lite setup
+kioku-lite --help   # verify
 ```
 
 ---
 
-## Step 3 — Create a Profile for the Bot
-
-**Rule:** Each bot gets its own isolated profile. Use the **Telegram Bot ID** (integer) as the profile name — it's stable, unique, and never changes.
+## Step 2 — Register Global Skill (once per machine)
 
 ```bash
-# Get Bot ID if you don't have it:
-# curl https://api.telegram.org/bot<TOKEN>/getMe | python3 -m json.tool | grep '"id"'
+kioku-lite init --global
+```
 
+This installs: `~/.agents/skills/kioku-lite/SKILL.md` — the full CLI reference.
+OpenClaw agents will use this as the source of truth for how to call the CLI.
+
+---
+
+## Step 3 — Install Profile for the Workspace
+
+Navigate to the workspace directory (or any temp dir — we just need the generated files):
+
+```bash
+mkdir -p ~/.openclaw/workspace-<name>
+cd ~/.openclaw/workspace-<name>
+
+# Choose a profile:
+kioku-lite install-profile companion   # Emotional Companion
+# OR
+kioku-lite install-profile mentor      # Business & Career Mentor
+```
+
+This generates two files:
+
+| File | Location | Content |
+|---|---|---|
+| `AGENTS.md` | `~/.openclaw/workspace-<name>/AGENTS.md` | Workspace context + persona role |
+| `SKILL.md` | `~/.agents/skills/kioku-<name>/SKILL.md` | Identity + KG Schema for the persona |
+
+---
+
+## Step 4 — Create OpenClaw Workspace Files
+
+OpenClaw uses a different file convention than the open standard. The developer agent should **derive** the OpenClaw-specific files from the files generated in Step 3:
+
+### 4a. Create `SOUL.md` — from `AGENTS.md` + profile `SKILL.md`
+
+Create `~/.openclaw/workspace-<name>/SOUL.md` by combining:
+- **Persona & role** → from `AGENTS.md` (Agent Role, Space description)
+- **Identity & tone** → from `~/.agents/skills/kioku-<name>/SKILL.md` (Identity section)
+- **Memory directives** → from `~/.agents/skills/kioku-<name>/SKILL.md` (Core Directives / Persona-Specific Workflow)
+
+Key directives to include in SOUL.md:
+```
+1. Save all new shared information with `kioku-lite save` (verbatim, no summarizing)
+2. Immediately call `kioku-lite kg-index` after each save
+3. Always enrich queries before searching
+4. Respond in the user's language (auto-detect)
+```
+
+### 4b. Create `TOOLS.md` — from global SKILL.md + profile schema
+
+Create `~/.openclaw/workspace-<name>/TOOLS.md` with:
+
+1. **Session start protocol** (add this at the top):
+
+```markdown
+## Session Start — Run at the beginning of EVERY session
+
+Step 1: Verify active profile
+\`\`\`bash
+kioku-lite users
+\`\`\`
+- If `active_profile` is already `<BOT_ID>` → proceed
+- If NOT → `kioku-lite users --use <BOT_ID>`
+
+Step 2: Load context
+\`\`\`bash
+kioku-lite search "<UserName> profile background goals recent" --limit 10
+\`\`\`
+```
+
+2. **CLI reference** → copy the **Core Commands** and **Decision Tree** sections from `~/.agents/skills/kioku-lite/SKILL.md` (the global skill)
+
+3. **KG Schema** → copy the **KG Schema** section from `~/.agents/skills/kioku-<name>/SKILL.md` (the profile skill) — this overrides the generic entity/relation types in the global skill
+
+> **Important note for TOOLS.md KG schema section:** The profile-specific schema (`EMOTION`, `LIFE_EVENT`, etc. for companion / `DECISION`, `LESSON_LEARNED`, etc. for mentor) takes precedence over the generic types in global SKILL.md.
+
+---
+
+## Step 5 — Create Kioku Profile for the Bot
+
+```bash
+# Use the Telegram Bot ID as profile name (stable, unique, audit-friendly)
 kioku-lite users --create <BOT_ID>
 kioku-lite users --use <BOT_ID>
 
 # Verify:
-kioku-lite users   # active_profile should be <BOT_ID>
+kioku-lite users
 ```
 
-> **Why use Bot ID?** Stable unique identifier, never changes, easy to audit in logs, scales cleanly when you have multiple bots. Keep it separate from `personal` or `test-*` profiles.
+Also update `<BOT_ID>` and `<UserName>` placeholders in `TOOLS.md`.
 
 ---
 
-## Step 4 — Install Workspace Files
+## Step 6 — Register Agent in `openclaw.json`
 
-Choose the profile that matches the agent's persona, then run:
+Add to `~/.openclaw/openclaw.json`:
 
-```bash
-# Emotional Companion persona
-kioku-lite install-openclaw companion ~/.openclaw/workspace-<name>
-
-# OR: Business & Career Mentor persona
-kioku-lite install-openclaw mentor ~/.openclaw/workspace-<name>
+**`agents.list`:**
+```json
+{
+  "id": "kioku-<name>",
+  "name": "Kioku <Name> Agent",
+  "workspace": "~/.openclaw/workspace-<name>"
+}
 ```
 
-This copies pre-built **`SOUL.md`** and **`TOOLS.md`** into the workspace:
+**`channels.telegram.accounts`** (if using Telegram):
+```json
+"kioku-<name>": {
+  "name": "Kioku <Name> Bot",
+  "dmPolicy": "pairing",
+  "botToken": "<YOUR_BOT_TOKEN>",
+  "groupPolicy": "allowlist",
+  "streamMode": "partial"
+}
+```
 
-| File | What it provides |
-|---|---|
-| `SOUL.md` | Persona, memory directives, tone, language handling |
-| `TOOLS.md` | Full CLI reference, entity schema, session start protocol, decision tree |
-
-After running, **open `TOOLS.md`** in the workspace and replace:
-- `<BOT_ID>` → the actual Telegram Bot ID (integer)
-- `<UserName>` → the user's name (for context loading at session start)
-
-> **Note on existing SOUL.md:** If the workspace already has a `SOUL.md` with a custom persona, the command will overwrite it. Backup first if needed:
-> ```bash
-> cp ~/.openclaw/workspace-<name>/SOUL.md ~/.openclaw/workspace-<name>/SOUL.md.bak
-> ```
+**`bindings`:**
+```json
+{
+  "agentId": "kioku-<name>",
+  "match": {
+    "channel": "telegram",
+    "accountId": "kioku-<name>"
+  }
+}
+```
 
 ---
 
-## Step 5 — Reload the Agent
-
-Restart the OpenClaw gateway to pick up workspace changes:
+## Step 7 — Restart Gateway
 
 ```bash
 openclaw gateway restart
-
-# Verify:
 openclaw gateway status
 ```
 
 ---
 
-## Step 6 — Verify
+## Step 8 — Verify
 
-Open the chatbot and send a test message. The agent should:
+Open the chatbot and test. The agent should:
 
-1. On session start: check `kioku-lite users` → activate `<BOT_ID>` if needed → load context
-2. When you share info: `save` + `kg-index` immediately
-3. When you ask: enrich → `search` / `recall` / `connect`
+1. Session start: check profile → activate `<BOT_ID>` if needed → load context
+2. User shares info: `save` + `kg-index` immediately
+3. User asks: enrich → `search` / `recall` / `connect`
 
-Quick test — send: `"I just had an amazing bowl of ramen for lunch."` → agent should save it and respond warmly (companion) or analytically (mentor).
+Quick test: `"I just had an amazing bowl of ramen for lunch."` → agent saves and responds warmly.
 
 ---
 
@@ -124,35 +184,22 @@ Quick test — send: `"I just had an amazing bowl of ramen for lunch."` → agen
 
 | Environment | Profile name | When to use |
 |---|---|---|
-| Production (live bot) | `<BOT_ID>` (integer) | Agent instructions — real user data |
-| Development / testing | `test-<uuid>` or any name | Manual testing, development |
+| Production (live bot) | `<BOT_ID>` (integer) | Real user data |
+| Development / testing | `test-<uuid>` or any name | Testing only |
 
-> ⚠️ Never run tests against the production profile. Always use a separate `test-*` profile when developing.
-
----
-
-## Troubleshooting
-
-| Symptom | Cause | Fix |
-|---|---|---|
-| `kioku-lite: command not found` in gateway logs | LaunchAgent PATH missing `~/.local/bin` | Check symlink: `ls -la ~/.omnara/bin/kioku-lite` |
-| Agent using wrong profile | `users --use` not called at session start | Check `TOOLS.md` session start section |
-| Slow first response | Embedding model not pre-downloaded | Run `kioku-lite setup` |
-| `No module named sqlite_vec` | Environment mismatch | Reinstall: `uv tool install "kioku-lite[cli]" --force` |
+> ⚠️ Never test against the production profile.
 
 ---
 
 ## Upgrade
 
-When a new version of kioku-lite is released:
-
 ```bash
 uv tool upgrade kioku-lite
 # or: pipx upgrade kioku-lite
 
-# Re-install workspace files to get updated SOUL.md + TOOLS.md:
-kioku-lite install-openclaw <profile> ~/.openclaw/workspace-<name>
+kioku-lite init --global             # refresh global SKILL.md
+kioku-lite install-profile <name>    # refresh profile AGENTS.md + SKILL.md
+# Then re-derive SOUL.md + TOOLS.md from updated files (Step 4)
 
-# Restart gateway:
 openclaw gateway restart
 ```
