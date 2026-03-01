@@ -33,17 +33,34 @@ kioku-lite --help
 
 ### Fix PATH for OpenClaw LaunchAgent (macOS)
 
-The OpenClaw LaunchAgent runs with a restricted PATH — `~/.local/bin` is usually excluded. Add a symlink to the first directory in the LaunchAgent's PATH:
+The OpenClaw LaunchAgent (background service) runs with a restricted PATH — `~/.local/bin` (where pipx/uv tool installs binaries) is usually excluded. You need to symlink `kioku-lite` into a directory that the LaunchAgent can see.
+
+**Step 1: Find the LaunchAgent PATH**
+
+OpenClaw installs itself under `~/.omnara/` (legacy name from when it was called Omnara). Check if that directory exists:
 
 ```bash
-# Create symlink (adjust target path if using pipx: ~/.local/bin/kioku-lite)
+ls ~/.omnara/bin/
+```
+
+If it exists, symlink there:
+
+```bash
 ln -sf "$(which kioku-lite)" ~/.omnara/bin/kioku-lite
 
-# Verify with LaunchAgent-equivalent PATH
+# Verify:
 env -i PATH="/Users/$USER/.omnara/bin:/opt/homebrew/bin:/usr/bin:/bin" kioku-lite --help
 ```
 
-> If `~/.omnara/bin` doesn't exist, check `~/.openclaw/openclaw.json` for the gateway PATH, or look at an existing working agent's symlinks.
+If `~/.omnara/bin` does NOT exist, find the correct directory from gateway logs:
+
+```bash
+# Find which PATH the LaunchAgent actually uses:
+cat ~/Library/LaunchAgents/com.omnara.*.plist 2>/dev/null | grep -A2 "PATH"
+# or check existing symlinks in known locations:
+ls ~/.openclaw/bin/ 2>/dev/null
+```
+
 
 ---
 
