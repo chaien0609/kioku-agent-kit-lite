@@ -10,77 +10,98 @@ description: >
 
 # Kioku Lite — Agent Memory Skill
 
-Kioku Lite là long-term personal memory engine chạy hoàn toàn local. Zero Docker, zero server. Mọi data trong SQLite. **Bạn (agent) tự extract entities → gọi `kg-index`.**
+Kioku Lite is a long-term personal memory engine running fully local. Zero Docker, zero server. All data in SQLite. **You (the agent) extract entities → call `kg-index`.**
 
 ---
 
-## 1. FIRST — Kiểm tra và cài đặt
+## Language Handling
 
-### Bước 1.1 — Kiểm tra đã cài chưa
+- **Detect the user's language automatically.** Always respond in the same language the user is writing in.
+- **Entity names:** Extract AS-IS in the user's original language — do NOT translate. Preserve the original wording.
+- **Entity types & relation types:** ALWAYS use the predefined English labels (PERSON, EMOTION, TRIGGERED_BY, etc.).
+- **Evidence & saved text:** Write in the user's original language.
 
-```bash
-kioku-lite --version
+```
+# Examples of correct multilingual extraction:
+
+User text (Vietnamese): "Hôm nay cãi nhau với sếp, cảm thấy rất căng thẳng"
+→ entities: [{"name":"sếp","type":"PERSON"}, {"name":"Căng thẳng","type":"EMOTION"}, {"name":"Cãi nhau","type":"LIFE_EVENT"}]
+→ relationships: [{"source":"Căng thẳng","rel_type":"TRIGGERED_BY","target":"Cãi nhau"}]
+
+User text (English): "Had an argument with my boss, feeling very stressed"
+→ entities: [{"name":"boss","type":"PERSON"}, {"name":"Stress","type":"EMOTION"}, {"name":"Argument with boss","type":"LIFE_EVENT"}]
+→ relationships: [{"source":"Stress","rel_type":"TRIGGERED_BY","target":"Argument with boss"}]
 ```
 
-**Nếu lệnh không tồn tại** → cài bằng `pipx` (recommended — global, không cần venv):
+---
+
+## 1. FIRST — Check and Install
+
+### Step 1.1 — Check if already installed
+
+```bash
+kioku-lite --help
+```
+
+**If the command is not found**, install via `pipx` (recommended — global, no venv needed):
 
 ```bash
 pipx install "kioku-lite[cli]"
 ```
 
-Nếu chưa có `pipx`:
+If `pipx` is not available:
 ```bash
 pip install pipx && pipx ensurepath
-# Restart terminal, rồi chạy lại pipx install
+# Restart terminal, then run pipx install again
 ```
 
-Hoặc cài trong venv của project:
+Or install inside a project venv:
 ```bash
 source .venv/bin/activate && pip install "kioku-lite[cli]"
 ```
 
-### Bước 1.2 — (Tùy chọn) Pre-download embedding model
+### Step 1.2 — (Optional) Pre-download embedding model
 
-Kioku-lite tự download model khi dùng lần đầu (~1.1GB). Nếu muốn download trước:
+Kioku Lite auto-downloads the model on first use (~1.1GB). To pre-download:
 
 ```bash
 kioku-lite setup
 ```
 
-**Tất cả settings đều có defaults hợp lý** — không cần setup nếu không ngại chờ lần đầu.
+**All settings have sensible defaults** — skip this if you don't mind waiting on first run.
 
-### Bước 1.3 — Init SKILL.md cho agent
+### Step 1.3 — Inject SKILL.md for your agent
 
-Chọn **một trong hai cách** để Claude Code biết dùng kioku-lite:
+Choose **one** of these to let your AI agent discover kioku-lite:
 
-**Option A — Global (recommended):** Chỉ cần làm 1 lần, tốt đời mọi project
+**Option A — Global (recommended):** Run once, works in ALL projects
 ```bash
 kioku-lite init --global
-# Tạo: ~/.claude/skills/kioku-lite/SKILL.md
+# Creates: ~/.claude/skills/kioku-lite/SKILL.md
 ```
 
-**Option B — Per-project:** Chỉ active ở project này
+**Option B — Per-project:** Active only in this project
 ```bash
 cd /path/to/project
 kioku-lite init
-# Tạo: ./CLAUDE.md + ./.claude/skills/kioku-lite/SKILL.md
+# Creates: ./AGENTS.md + ./.agents/skills/kioku-lite/SKILL.md
 ```
 
-Chọn **global nếu** bạn muốn Kioku Lite là personal memory engine theo suốt (recommend).
-Chọn **per-project nếu** chỉ muốn dùng cho project đó, không ảnh hưởng project khác.
+Choose **global** if you want Kioku Lite as your persistent personal memory engine.
+Choose **per-project** if you want isolation per project.
 
 ---
 
-## 2. SESSION START — Bắt đầu mỗi phiên
+## 2. SESSION START — At the beginning of every session
 
-**Ở đầu mỗi session**, bạn MUST:
+**At the start of every session**, you MUST:
 
-**Bước A — Lấy danh sách profiles:**
+**Step A — List profiles:**
 ```bash
 kioku-lite users
 ```
 
-Output ví dụ:
+Example output:
 ```json
 {
   "profiles": [
@@ -92,254 +113,218 @@ Output ví dụ:
 }
 ```
 
-**Bước B — Hỏi user muốn dùng profile nào:**
+**Step B — Ask the user which profile to use:**
 
-> "🗣️ Kioku Lite đang có các profile:
+> "🗣️ Kioku Lite has these profiles:
 > 1. `personal` ✓ active (512 KB)
-> 2. `work` (trống)
-> Bạn muốn dùng profile nào hôm nay? Hoặc tạo mới?"
+> 2. `work` (empty)
+> Which profile would you like to use? Or create a new one?"
 
-Nếu user muốn **tạo profile mới**:
+To **create a new profile**:
 ```bash
-kioku-lite users --create <tên>
-kioku-lite users --use <tên>
+kioku-lite users --create <name>
+kioku-lite users --use <name>
 ```
 
-**Bước C — Activate và load context:**
+**Step C — Activate and load context:**
 ```bash
-# Activate profile (ghi vào ~/.kioku-lite/.active_user)
+# Activate profile (writes to ~/.kioku-lite/.active_user)
 kioku-lite users --use <profile_name>
 
-# Từ đây mọi lệnh TỰ ĐỘNG dùng profile đó — không cần prefix
+# All subsequent commands automatically use this profile
 kioku-lite search "profile background goals recent" --limit 10
-kioku-lite save "text"
 ```
 
-**Lưu ý:** `users --use` chỉ cần gọi 1 lần đầu session. Sau đó gọi `save`/`search` bình thường.
+**Note:** `users --use` only needs to be called once per session. Then call `save`/`search` normally.
 
 ---
 
-## 3. Chạy lệnh
+## 3. Running Commands
 
-Sau khi cài, gọi thẳng — không cần export, không cần activate:
+After installation, call directly — no export or activation needed:
 
 ```bash
 kioku-lite save "text"
 kioku-lite search "query"
 ```
 
-Nếu cài qua venv (không phải pipx), cần activate trước:
+If installed via venv (not pipx), activate first:
 ```bash
 source .venv/bin/activate && kioku-lite save "text"
 ```
 
 ---
 
-## 3. Các lệnh chính
+## 4. Core Commands
 
-| Lệnh | Khi nào dùng |
+| Command | When to use |
 |---|---|
-| `kioku-lite save "TEXT"` | User chia sẻ thông tin mới |
-| `kioku-lite kg-index HASH …` | Ngay sau save — index entities bạn extract |
-| `kioku-lite search "QUERY"` | Recall, lookup context |
-| `kioku-lite recall "ENTITY"` | Tất cả memories liên quan một entity |
-| `kioku-lite entities` | Xem danh sách entities đã biết |
-| `kioku-lite timeline` | Dòng thời gian memories |
+| `kioku-lite save "TEXT"` | User shares new information |
+| `kioku-lite kg-index HASH …` | Right after save — index entities you extracted |
+| `kioku-lite search "QUERY"` | Recall, look up context |
+| `kioku-lite recall "ENTITY"` | All memories related to one entity |
+| `kioku-lite entities` | View known entity list |
+| `kioku-lite timeline` | Chronological memory list |
 
 ---
 
-## 4. `kioku-lite save` — Bước 1
+## 5. `kioku-lite save` — Step 1
 
 ```bash
 kioku-lite save "TEXT" --mood MOOD --tags "tag1,tag2" --event-time "YYYY-MM-DD"
 ```
 
-**Output:** JSON với `content_hash` → dùng ngay cho `kg-index`.
+**Output:** JSON with `content_hash` → use immediately with `kg-index`.
 
 **Rules:**
-- ✅ Giữ nguyên **full original text** — không tóm tắt, không paraphrase
-- ✅ Text dài (>300 chars) hay nhiều chủ đề → split thành nhiều saves
-- ✅ `--event-time` = khi sự kiện thực sự xảy ra (không phải bây giờ)
+- ✅ Preserve **full original text** — do not summarize or paraphrase
+- ✅ Long text (>300 chars) or multiple topics → split into multiple saves
+- ✅ `--event-time` = when the event actually happened (not now)
 - ✅ Mood: `happy` | `sad` | `excited` | `anxious` | `grateful` | `proud` | `reflective` | `neutral` | `work` | `curious`
-- ❌ Không thêm editorial comments — lưu thông tin thô
+- ❌ Do not add editorial comments — save raw information
 
 ---
 
-## 5. `kioku-lite kg-index` — Bước 2 (CRITICAL)
+## 6. `kioku-lite kg-index` — Step 2 (CRITICAL)
 
-Sau mỗi `save`, bạn **tự extract entities** rồi gọi `kg-index`:
+After each `save`, **you extract entities** then call `kg-index`:
 
 ```bash
 kioku-lite kg-index <content_hash> \
-  --entities '[{"name":"Hùng","type":"PERSON"},{"name":"Kioku Lite","type":"PROJECT"}]' \
-  --relationships '[{"source":"Hùng","rel_type":"WORKS_ON","target":"Kioku Lite","evidence":"..."}]'
+  --entities '[{"name":"Alice","type":"PERSON"},{"name":"Project X","type":"PROJECT"}]' \
+  --relationships '[{"source":"Alice","rel_type":"WORKS_ON","target":"Project X","evidence":"..."}]'
 ```
 
 **Entity types:** `PERSON` | `PROJECT` | `PLACE` | `TOOL` | `CONCEPT` | `ORGANIZATION` | `EVENT`
 
 **Relationship types:** `KNOWS` | `WORKS_ON` | `WORKS_AT` | `CONTRIBUTED_TO` | `USED_BY` | `LOCATED_AT` | `INVOLVES` | `MENTIONS`
 
+> **Profile-specific types:** If a persona profile (companion/mentor) is active,
+> use the entity and relationship types defined in that profile's SKILL.md INSTEAD of the generic ones above.
+
 **Extraction rules:**
-- ✅ Tên nguyên gốc: `"Hùng"` không phải `"anh Hùng"`
-- ✅ Tiếng Việt → tên Việt: `"mẹ"`, `"TBV"`, `"dự án X"`
-- ❌ Bỏ qua từ chung: `"team"`, `"mình"`, `"tôi"`, `"họ"`, `"chúng tôi"`
-- ❌ Chỉ add relationship được nhắc rõ trong text
-- ✅ Không có entities cụ thể → không cần gọi `kg-index`
+- ✅ Use original name form: `"Alice"` not `"my friend Alice"`
+- ✅ Entity names in the user's original language — do NOT translate
+- ❌ Skip generic words: `"team"`, `"I"`, `"they"`, `"we"`
+- ❌ Only add relationships explicitly mentioned in the text
+- ✅ No specific entities → skip `kg-index`
 
 ---
 
-## 6. `kioku-lite search` — Enriched Search Workflow
+## 7. `kioku-lite search` — Enriched Search Workflow
 
-**Không bao giờ gọi search với raw user query.** Luôn enrich trước:
+**Never call search with the raw user query.** Always enrich first:
 
-### Bước 1 — Lấy entity list làm từ điển
+### Step 1 — Get entity list as a dictionary
 
 ```bash
 kioku-lite entities --limit 50
 ```
 
-Output: danh sách `{name, type, mention_count}` đã biết — dùng để map pronouns và inference.
+Output: list of `{name, type, mention_count}` — use to map pronouns and infer context.
 
-### Bước 2 — Phân tích intent và enrich query
+### Step 2 — Analyze intent and enrich query
 
-| Case | Dấu hiệu | Hành động |
-|------|----------|-----------|
-| **Pronoun** | "anh ấy", "cô ấy", "nó", "mình", "tôi", "họ" | Map → entity name từ conversation context |
-| **Implicit subject** | "dự án", "công ty", "chỗ làm", "trường" | Map → entity cụ thể đang được nhắc trong context |
-| **Temporal** | "hôm qua", "tuần rồi", "tháng 2", "năm ngoái" | Map → `--from DATE --to DATE` |
-| **Relational** | "bạn của X", "ai làm X", "X ở đâu" | Dùng `recall X` + `connect X Y` |
-| **Thematic** | topic chung không có entity rõ | Dùng semantic search thuần, thêm domain keywords |
-| **Mixed** | kết hợp nhiều loại trên | Áp dụng tất cả transformations |
+| Case | Signal | Action |
+|------|--------|--------|
+| **Pronoun** | "he", "she", "it", "they" | Map → entity name from conversation context |
+| **Implicit subject** | "the project", "the company", "work" | Map → specific entity currently being discussed |
+| **Temporal** | "yesterday", "last week", "in March" | Map → `--from DATE --to DATE` |
+| **Relational** | "friend of X", "who does X", "where is X" | Use `recall X` + `connect X Y` |
+| **Thematic** | general topic with no clear entity | Use pure semantic search with domain keywords |
+| **Mixed** | combination of the above | Apply all transformations |
 
-### Bước 3 — Build enriched query
+### Step 3 — Build enriched query
 
-**Template chuẩn:**
+**Standard template:**
 ```
 enriched_query = [ActualEntityName] + [original_keywords] + [domain_context_keywords]
-entities_param = [trực tiếp nhắc + inferred từ type]
-date_range    = [nếu có temporal signal]
+entities_param = [directly mentioned + inferred from type]
+date_range    = [if temporal signal present]
 ```
 
-**Ví dụ transformations:**
-
-```
-# Case: Pronoun
-"anh ấy làm gì?"
-  → conversation context: đang nhắc Hùng
-  → "Hùng làm gì career work project"  --entities "Hùng"
-
-# Case: Implicit entity
-"dự án đang đến đâu rồi?"
-  → current topic: Kioku Lite
-  → "Kioku Lite progress milestone status" --entities "Kioku Lite"
-
-# Case: Temporal
-"tuần trước có gì?"
-  → date range: 2026-02-17 → 2026-02-23
-  → "events highlights" --from 2026-02-17 --to 2026-02-23
-
-# Case: Relational "ai làm việc cùng X"
-"ai hay làm việc với Phúc?"
-  → kioku-lite recall "Phúc" --hops 2
-  → parse nodes: PERSON entities connected → "Hùng", "Lan"
-
-# Case: Multi-entity relationship
-"Phúc và TBV liên quan thế nào?"
-  → kioku-lite connect "Phúc" "TBV"
-
-# Case: Implicit type mapping
-"project nào Phúc đang làm?"
-  → entities có type PROJECT trong entities list: "Kioku Lite"
-  → "Phúc project work" --entities "Phúc,Kioku Lite"
-
-# Case: Thematic (không có entity rõ)
-"tại sao chọn học tiếng Nhật?"
-  → add domain: "Japan Japanese language motivation reason decision"
-  → kioku-lite search "tại sao học tiếng Nhật Japan motivation decision"
-```
-
-### Bước 4 — Chọn lệnh phù hợp
+### Step 4 — Choose the right command
 
 ```bash
-# Standard: text query có thể có entities
+# Standard: text query with optional entities
 kioku-lite search "ENRICHED_QUERY" --entities "E1,E2" --limit 10
 
-# Entity deep dive: tất cả memories liên quan 1 entity + graph traversal
+# Entity deep dive: all memories related to one entity + graph traversal
 kioku-lite recall "ENTITY" --hops 2 --limit 15
 
-# Two-entity path: giải thích mối liên hệ 2 entities
+# Two-entity path: explain connection between two entities
 kioku-lite connect "ENTITY_A" "ENTITY_B"
 
-# Temporal slice: memories trong khoảng thời gian
+# Temporal slice: memories within a date range
 kioku-lite search "TOPIC keywords" --from YYYY-MM-DD --to YYYY-MM-DD
 
 # Recent timeline: chronological view
 kioku-lite timeline --limit 20
 ```
 
-### Bước 5 — Sau khi nhận kết quả
+### Step 5 — After receiving results
 
-- Kết quả có `content_hash` — có thể dùng để `kg-index` thêm entities nếu cần
-- 0 results → thông báo thật, không đoán  
-- Confidence thấp (score < 0.02) → nói rõ "có thể liên quan, nhưng không chắc"
+- Results have `content_hash` — can be used to `kg-index` additional entities if needed
+- 0 results → be honest, don't guess
+- Low confidence (score < 0.02) → say "possibly related, but not certain"
 
 ---
 
-## 7. Full workflow example
+## 8. Full Workflow Example
 
 ```
-User: "Hôm nay tôi họp với Hùng và Lan về dự án Kioku Lite."
+User: "Today I had a meeting with Alice and Bob about the Kioku Lite project."
 
 ─── Step 1: Save ───
-kioku-lite save "Hôm nay họp với Hùng và Lan về dự án Kioku Lite." \
-  --mood work --event-time 2026-02-27
+kioku-lite save "Today I had a meeting with Alice and Bob about the Kioku Lite project." \
+  --mood work --event-time 2026-03-01
 → {"content_hash": "abc123...", "status": "ok"}
 
 ─── Step 2: Extract entities ───
-  Hùng (PERSON), Lan (PERSON), Kioku Lite (PROJECT)
-  Hùng → WORKS_ON → Kioku Lite
-  Lan  → WORKS_ON → Kioku Lite
+  Alice (PERSON), Bob (PERSON), Kioku Lite (PROJECT)
+  Alice → WORKS_ON → Kioku Lite
+  Bob   → WORKS_ON → Kioku Lite
 
 ─── Step 3: kg-index ───
 kioku-lite kg-index abc123 \
-  --entities '[{"name":"Hùng","type":"PERSON"},{"name":"Lan","type":"PERSON"},{"name":"Kioku Lite","type":"PROJECT"}]' \
+  --entities '[{"name":"Alice","type":"PERSON"},{"name":"Bob","type":"PERSON"},{"name":"Kioku Lite","type":"PROJECT"}]' \
   --relationships '[
-    {"source":"Hùng","rel_type":"WORKS_ON","target":"Kioku Lite","evidence":"họp về Kioku Lite"},
-    {"source":"Lan","rel_type":"WORKS_ON","target":"Kioku Lite","evidence":"họp về Kioku Lite"}
+    {"source":"Alice","rel_type":"WORKS_ON","target":"Kioku Lite","evidence":"meeting about Kioku Lite"},
+    {"source":"Bob","rel_type":"WORKS_ON","target":"Kioku Lite","evidence":"meeting about Kioku Lite"}
   ]'
 ```
 
 ---
 
-## 8. Decision Tree — Start of every session
+## 9. Decision Tree — Start of Every Session
 
 ```
-Bắt đầu conversation?
-└─ Luôn search trước để load context:
+Starting a conversation?
+└─ Always search first to load context:
    kioku-lite search "[UserName] profile background goals focus" --limit 10
 
-User shares info / "nhớ cái này":
+User shares info / "remember this":
 └─ save → kg-index
 
-User hỏi / "ai là X?" / "hôm qua làm gì?":
+User asks / "who is X?" / "what happened yesterday?":
 └─ ENRICH query → search
 
-"Chuyện gì ngày [date]?":
+"What happened on [date]?":
 └─ search "events" --from DATE --to DATE
 
-"Kể về X":
+"Tell me about X":
 └─ recall "X" --hops 2
 ```
 
 **Critical rules:**
-- 🚫 Never invent memories. 0 results → nói thật.
-- ✅ Luôn save khi user chia sẻ thông tin có giá trị.
-- ✅ Luôn kg-index sau save nếu có entities.
-- ✅ Enrich queries — replace "tôi/mình/anh/chị" bằng tên thật.
+- 🚫 Never invent memories. 0 results → be honest.
+- ✅ Always save when user shares valuable information.
+- ✅ Always kg-index after save if entities are present.
+- ✅ Enrich queries — replace "I/me/he/she" with real names.
 
 ---
 
-## 9. Config & Data locations
+## 10. Config & Data Locations
 
 ```
 ~/.kioku-lite/
@@ -349,24 +334,23 @@ User hỏi / "ai là X?" / "hôm qua làm gì?":
         └── kioku.db        # SQLite: FTS5 + sqlite-vec + KG graph
 ```
 
-**Config file `~/.kioku-lite/config.env` là tùy chọn** — chỉ cần khi:
-- Muốn đổi `user_id` toàn cục
-- Muốn dùng embedding provider khác (ollama thay fastembed)
+**Config file `~/.kioku-lite/config.env` is optional** — only needed when:
+- Changing `user_id` globally
+- Switching embedding provider (e.g., ollama instead of fastembed)
 
-Muốn tách data theo project → thêm `.env` vào project directory:
+To isolate data per project, add `.env` to the project directory:
 ```bash
 echo "KIOKU_LITE_USER_ID=project-x" > .env
-# Project .env override mọi setting khác
+# Project .env overrides all other settings
 ```
 
 ---
 
-## 10. Troubleshooting
+## 11. Troubleshooting
 
-| Vấn đề | Giải pháp |
+| Issue | Solution |
 |---|---|
-| `kioku-lite: command not found` | `pipx install "kioku-lite[cli]"` hoặc `source .venv/bin/activate` |
-| `user_id = default` (không phải `personal`) | Chạy `kioku-lite setup --user-id personal` |
-| Search chậm lần đầu (~5s) | Model đang warm up — lần sau nhanh hơn |
-| Download model bị interrupt | Chạy lại `kioku-lite setup` |
+| `kioku-lite: command not found` | `pipx install "kioku-lite[cli]"` or `source .venv/bin/activate` |
+| Search is slow on first run (~5s) | Model warming up — faster afterward |
+| Model download interrupted | Run `kioku-lite setup` again |
 | `No module named sqlite_vec` | `pip install --upgrade "kioku-lite[cli]"` |
