@@ -89,10 +89,10 @@ Step 1: Verify active profile
 \`\`\`bash
 kioku-lite users
 \`\`\`
-- If `active_profile` is already `<BOT_ID>` → proceed
-- If NOT → `kioku-lite users --use <BOT_ID>`
+- If `active_profile` is already `<AGENT_ID>` → proceed
+- If NOT → `kioku-lite users --use <AGENT_ID>`
 
-> ⚠️ Profile `<BOT_ID>` is real user data. Never switch to `personal` or `test-*` during a live session.
+> ⚠️ Profile `<AGENT_ID>` is real user data. Never switch to `personal` or `test-*` during a live session.
 
 Step 2: Load context
 \`\`\`bash
@@ -118,18 +118,22 @@ Read the full CLI documentation from:
 
 ---
 
-## Step 5 — Create Kioku Profile for the Bot
+## Step 5 — Create Kioku Profile
+
+**Profile name = the OpenClaw agent ID** (the `id` field you set in `openclaw.json` → `agents.list`).
+
+The OpenClaw agent cannot query its own Telegram Bot ID at runtime, so use the agent ID instead — it's developer-controlled, stable, and unique per deployment.
 
 ```bash
-# Use the Telegram Bot ID as profile name (stable, unique, audit-friendly)
-kioku-lite users --create <BOT_ID>
-kioku-lite users --use <BOT_ID>
+# Example: agent id is "kioku-companion"
+kioku-lite users --create <AGENT_ID>
+kioku-lite users --use <AGENT_ID>
 
 # Verify:
 kioku-lite users
 ```
 
-Also update `<BOT_ID>` and `<UserName>` placeholders in `TOOLS.md`.
+Also replace `<AGENT_ID>` and `<UserName>` placeholders in `TOOLS.md`.
 
 ---
 
