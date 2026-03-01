@@ -37,17 +37,22 @@ OpenClaw agents will use this as the source of truth for how to call the CLI.
 
 ## Step 3 — Install Profile for the Workspace
 
-Navigate to the workspace directory (or any temp dir — we just need the generated files):
+> **🛑 STOP — Ask the user before proceeding:**
+> _"Which persona do you want for this agent — **companion** (emotional listener) or **mentor** (business & career advisor)?"_
+> Do not choose a default. Wait for the user's answer before running the command below.
+
+Navigate to the workspace directory, then run the chosen profile:
 
 ```bash
 mkdir -p ~/.openclaw/workspace-<name>
 cd ~/.openclaw/workspace-<name>
 
-# Choose a profile:
+# Install the profile chosen by the user:
 kioku-lite install-profile companion   # Emotional Companion
 # OR
 kioku-lite install-profile mentor      # Business & Career Mentor
 ```
+
 
 This generates two files:
 
