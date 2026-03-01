@@ -1,6 +1,6 @@
 # Hướng dẫn cài đặt Kioku Lite cho AI Agent
 
-> Version: 0.1.15 | Tương thích: Claude Code, Cursor, Windsurf, bất kỳ agent nào hỗ trợ AGENTS.md / SKILL.md
+> Version: 0.1.16 | Tương thích: Claude Code, Cursor, Windsurf, bất kỳ agent nào hỗ trợ AGENTS.md / SKILL.md
 
 ---
 
@@ -57,7 +57,7 @@ kioku-lite install-profile mentor      # Cố vấn công việc
 
 Tạo ra:
 - `AGENTS.md` ở thư mục hiện tại — Mang Identity + vai trò cụ thể
-- `~/.agents/skills/kioku-<name>/SKILL.md` — Hướng dẫn CLI + Schema riêng theo persona
+- `~/.agents/skills/kioku-<name>/SKILL.md` — Identity + KG Schema riêng theo persona (CLI docs đọc từ global SKILL.md)
 
 ---
 
