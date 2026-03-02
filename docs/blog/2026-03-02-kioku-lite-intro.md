@@ -6,6 +6,9 @@ Hôm nay mình muốn giới thiệu một side-project mà mình đã ấp ủ 
 
 Đó là lý do **kioku-lite** ra đời. Đây là một Personal Memory Engine siêu nhẹ, chạy hoàn toàn local, được thiết kế chuyên biệt cho AI Agent.
 
+[![kioku-lite homepage](img/image.png)](https://phuc-nt.github.io/kioku-lite-landing/)
+*Trang chủ: [phuc-nt.github.io/kioku-lite-landing](https://phuc-nt.github.io/kioku-lite-landing/)*
+
 ## Ý tưởng ban đầu: Nỗi đau của người thích viết nhật ký
 
 Mình vốn là một người có thói quen viết nhật ký hàng ngày. Mình thích "phản tỉnh" (self-reflect) và nhìn nhận lại bản thân dựa trên những sự kiện đã qua. Trong thời đại AI bùng nổ, mình đã thử dùng rất nhiều công cụ và chat bot để làm việc này, nhưng kết quả luôn gây thất vọng.
@@ -144,6 +147,9 @@ Trong khi đó, phiên bản **kioku-full** với graph database và vector data
 
 Nếu bạn là một builder, một dev yêu thích open-source, và đặc biệt nếu bạn vẫn đang loay hoay tìm một giải pháp "trí nhớ dài hạn" giúp AI phân tích được cảm xúc và nhân quả như một người bạn thực thụ, hãy thử dùng **Kioku Lite**.
 
-Sự phản hồi và động viên của anh em lúc này là sức mạnh để dự án đi tiếp. Hãy ủng hộ mình bằng cách dùng thử, share cho những ai cần, hoặc đơn giản là thả một **[Star cho repo Github](https://github.com/phuc-nt/kioku-agent-kit-lite)** nhé!
+- Homepage: **[phuc-nt.github.io/kioku-lite-landing](https://phuc-nt.github.io/kioku-lite-landing/)**
+- GitHub: **[github.com/phuc-nt/kioku-agent-kit-lite](https://github.com/phuc-nt/kioku-agent-kit-lite)**
+
+Sự phản hồi và động viên của anh em lúc này là sức mạnh để dự án đi tiếp. Hãy ủng hộ mình bằng cách dùng thử, share cho những ai cần, hoặc đơn giản là thả một Star cho repo nhé!
 
 Cảm ơn mọi người đã dành thời gian đọc bài! Happy coding và rất mong nhận được feedback từ cộng đồng!
