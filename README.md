@@ -3,6 +3,7 @@
 > Personal memory engine for AI agents. Tri-hybrid search, zero Docker, single SQLite file.
 
 [![PyPI](https://img.shields.io/pypi/v/kioku-lite)](https://pypi.org/project/kioku-lite/)
+[![Downloads](https://static.pepy.tech/badge/kioku-lite)](https://pepy.tech/project/kioku-lite)
 [![Python](https://img.shields.io/pypi/pyversions/kioku-lite)](https://pypi.org/project/kioku-lite/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
