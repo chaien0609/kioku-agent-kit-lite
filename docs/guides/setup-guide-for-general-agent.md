@@ -1,6 +1,6 @@
 # Agent Setup Guide for Kioku Lite
 
-> Version: 0.1.17 | Compatible with: Claude Code, Cursor, Windsurf, and any agent supporting AGENTS.md / SKILL.md
+> Version: 0.1.18 | Compatible with: Claude Code, Cursor, Windsurf, and any agent supporting AGENTS.md / SKILL.md
 
 ---
 
@@ -27,7 +27,7 @@ This teaches your agent **how to use** Kioku Lite across all projects:
 kioku-lite init --global
 ```
 
-This installs `~/.claude/skills/kioku-lite/SKILL.md` — your agent auto-discovers it in every project.
+This installs `~/.claude/skills/kioku-lite/SKILL.md` — auto-discovered by Claude Code in every project. (For Cursor/Windsurf: also run `kioku-lite init` per-project to get `.agents/skills/kioku-lite/SKILL.md`.)
 
 After running, follow the instructions printed to the terminal to complete Step 2 (activate a workspace).
 

@@ -1,6 +1,6 @@
 # System Architecture — kioku-agent-kit-lite
 
-> Last updated: 2026-02-27 (v0.1.0)
+> Last updated: 2026-03-02 (v0.1.18)
 
 ## Overview
 
@@ -19,10 +19,10 @@ kioku-agent-kit-lite là personal memory engine cho AI agents với thiết kế
 │                                                              │
 │   ┌───────────────────────────────────────────────────────┐  │
 │   │  cli.py  (Typer CLI)                                  │  │
-│   │  • kioku-lite save          • kioku-lite search       │  │
-│   │  • kioku-lite kg-index      • kioku-lite show         │  │
-│   │  • kioku-lite delete        • kioku-lite list         │  │
-│   │  • kioku-lite stats                                   │  │
+│   │  • save       • kg-index    • kg-alias               │  │
+│   │  • search     • recall      • connect                │  │
+│   │  • entities   • timeline    • users    • setup       │  │
+│   │  • init       • install-profile                      │  │
 │   └──────────────────────────┬────────────────────────────┘  │
 │                              │                               │
 └──────────────────────────────┼───────────────────────────────┘
@@ -38,12 +38,12 @@ kioku-agent-kit-lite là personal memory engine cho AI agents với thiết kế
   (human backup)      ONNX local    ┌────────────────────────┐
                                     │  SQLiteStore           │
                                     │  ├── memories (FTS5)   │
-                                    │  └── vec_memories      │
+                                    │  └── memory_vec        │
                                     │      (sqlite-vec)      │
                                     │                        │
                                     │  GraphStore            │
-                                    │  ├── kg_entities       │
-                                    │  ├── kg_relations      │
+                                    │  ├── kg_nodes          │
+                                    │  ├── kg_edges          │
                                     │  └── kg_aliases        │
                                     └────────────────────────┘
 ```
@@ -55,7 +55,7 @@ src/kioku_lite/
 ├── __init__.py
 ├── config.py          # Settings (Pydantic) — env vars KIOKU_LITE_*
 ├── service.py         # KiokuLiteService — tất cả business logic
-├── cli.py             # CLI (Typer) — 7 commands
+├── cli.py             # CLI (Typer) — 12 commands
 │
 ├── pipeline/          # WRITE path
 │   ├── db.py          # KiokuDB — facade cho SQLiteStore + GraphStore
@@ -75,7 +75,7 @@ src/kioku_lite/
 
 ## Data Flow: Save
 
-See [save.md](save.md) for full details.
+See [02-write-save-kg-index.md](02-write-save-kg-index.md) for full details.
 
 | Step | Component | Output |
 |---|---|---|
@@ -88,7 +88,7 @@ See [save.md](save.md) for full details.
 
 ## Data Flow: Search
 
-See [search.md](search.md) for full details.
+See [03-search.md](03-search.md) for full details.
 
 | Step | Component | Output |
 |---|---|---|
@@ -100,7 +100,7 @@ See [search.md](search.md) for full details.
 
 ## Data Flow: KG Index (Agent-Driven)
 
-See [kg-index.md](kg-index.md) for full details.
+See [02-write-save-kg-index.md](02-write-save-kg-index.md) for full details.
 
 ```
 Agent extracts from context:
