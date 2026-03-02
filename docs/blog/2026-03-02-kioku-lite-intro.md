@@ -6,7 +6,7 @@ Hôm nay mình muốn giới thiệu một side-project mà mình đã ấp ủ 
 
 Đó là lý do **Kioku** ra đời. Đây là một Personal Memory Engine siêu nhẹ, chạy hoàn toàn local, được thiết kế chuyên biệt cho AI Agent.
 
-[![kioku-lite homepage](img/image.png)](https://phuc-nt.github.io/kioku-lite-landing/)
+![kioku-lite homepage](img/image.png)
 *Trang chủ: [phuc-nt.github.io/kioku-lite-landing](https://phuc-nt.github.io/kioku-lite-landing/)*
 
 ## Ý tưởng ban đầu: Nỗi đau của người thích viết nhật ký
