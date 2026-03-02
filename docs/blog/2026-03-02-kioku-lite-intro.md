@@ -4,7 +4,7 @@ Chào anh em builder và cộng đồng open-source!
 
 Hôm nay mình muốn giới thiệu một side-project mà mình đã ấp ủ và phát triển để giải quyết một pain point rất cá nhân nhưng mình tin là nhiều anh em ở đây cũng gặp phải: **Làm sao để AI thực sự có một "trí nhớ dài hạn" hiểu được cảm xúc và quan hệ nhân quả của chúng ta?**
 
-Đó là lý do **Kioku** ra đời. Đây là một Personal Memory Engine siêu nhẹ, chạy hoàn toàn local, được thiết kế chuyên biệt cho AI Agent.
+Đó là lý do **Kioku** ra đời. *Kioku* (記憶) trong tiếng Nhật nghĩa là "ký ức" — 記 (ki) là ghi chép, 憶 (oku) là hồi tưởng. Đây là một Personal Memory Engine siêu nhẹ, chạy hoàn toàn local, được thiết kế chuyên biệt cho AI Agent.
 
 ![kioku-lite homepage](img/image.png)
 *Trang chủ: [phuc-nt.github.io/kioku-lite-landing](https://phuc-nt.github.io/kioku-lite-landing/)*

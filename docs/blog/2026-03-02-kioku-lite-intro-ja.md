@@ -4,7 +4,7 @@
 
 今日は、とても個人的な課題を解決するために開発したサイドプロジェクトを紹介したいと思います。きっと多くの方が同じ悩みを抱えているはずです：**AIに感情や因果関係を理解する「長期記憶」を持たせるにはどうすればいいのか？**
 
-そこで生まれたのが **Kioku**（記憶）です。完全にローカルで動作する超軽量なPersonal Memory Engineで、AIエージェント専用に設計されています。
+そこで生まれたのが **Kioku**（記憶）です。「記」は記録する、「憶」は思い出す — まさにこのプロジェクトの本質を表す名前です。完全にローカルで動作する超軽量なPersonal Memory Engineで、AIエージェント専用に設計されています。
 
 ![kioku-lite homepage](img/image.png)
 *ホームページ: [phuc-nt.github.io/kioku-lite-landing](https://phuc-nt.github.io/kioku-lite-landing/)*

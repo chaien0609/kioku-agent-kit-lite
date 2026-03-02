@@ -4,7 +4,7 @@ Hey builders and open-source community!
 
 Today I want to share a side-project I've been building to solve a very personal pain point that I believe many of you also face: **How do you give AI a real "long-term memory" that understands emotions and causal relationships?**
 
-That's why **Kioku** was born. It's an ultra-lightweight Personal Memory Engine, runs entirely local, designed specifically for AI Agents.
+That's why **Kioku** was born. *Kioku* (記憶) means "memory" in Japanese — 記 (ki) to record, 憶 (oku) to remember. It's an ultra-lightweight Personal Memory Engine, runs entirely local, designed specifically for AI Agents.
 
 ![kioku-lite homepage](img/image.png)
 *Homepage: [phuc-nt.github.io/kioku-lite-landing](https://phuc-nt.github.io/kioku-lite-landing/)*
