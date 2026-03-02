@@ -8,7 +8,7 @@
 
 **kioku-lite** (*kioku = memory in Japanese*) gives AI agents long-term memory with causal reasoning. It stores, indexes, and retrieves personal memories using tri-hybrid search (BM25 + Vector + Knowledge Graph) — all within a single SQLite file.
 
-**[Homepage](https://phuc-nt.github.io/kioku-lite-landing/)** · **[Docs](https://phuc-nt.github.io/kioku-lite-landing/blog.html)** · **[Blog (EN)](https://phuc-nt.github.io/kioku-lite-landing/blog.html#kioku-intro)** · **[Blog (VN)](https://phuc-nt.github.io/kioku-lite-landing/blog.html#kioku-intro-vn)** · **[PyPI](https://pypi.org/project/kioku-lite/)**
+**[Homepage](https://phuc-nt.github.io/kioku-lite-landing/)** · **[Docs](https://phuc-nt.github.io/kioku-lite-landing/blog.html)** · **[Blog (EN)](https://phuc-nt.github.io/kioku-lite-landing/blog.html#kioku-intro)** · **[Blog (JA)](https://phuc-nt.github.io/kioku-lite-landing/blog.html#kioku-intro-ja)** · **[Blog (VN)](https://phuc-nt.github.io/kioku-lite-landing/blog.html#kioku-intro-vn)** · **[PyPI](https://pypi.org/project/kioku-lite/)**
 
 ---
 
