@@ -12,6 +12,8 @@
 
 > **Read the intro:** [Why I built a Knowledge Graph memory engine for my AI agents](https://phuc-nt.github.io/kioku-lite-landing/blog.html#kioku-intro) — also in [日本語](https://phuc-nt.github.io/kioku-lite-landing/blog.html#kioku-intro-ja) and [Tiếng Việt](https://phuc-nt.github.io/kioku-lite-landing/blog.html#kioku-intro-vn)
 
+![kioku-lite](docs/blog/img/image.png)
+
 ---
 
 ## Why kioku-lite
