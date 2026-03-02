@@ -1,15 +1,15 @@
 # System Architecture — kioku-agent-kit-lite
 
-
+> Last updated: 2026-03-02 (v0.1.18)
 
 ## Overview
 
-kioku-agent-kit-lite là personal memory engine cho AI agents với thiết kế **zero-dependency**: không cần Docker, không cần server bên ngoài. Mọi storage đều trong một file SQLite duy nhất, embedding chạy local bằng ONNX.
+kioku-agent-kit-lite is a personal memory engine for AI agents with a **zero-dependency** design: no Docker, no external servers. All storage is in a single SQLite file, and embedding runs locally via ONNX.
 
-**Triết lý thiết kế:**
-- **Agent-driven KG** — kioku-lite không tự gọi LLM. Agent tự extract entities → gọi `kg-index` để lưu vào graph.
-- **SQLite-everything** — BM25 (FTS5) + vector (sqlite-vec) + knowledge graph đều trong một file `.db`.
-- **Offline-capable** — FastEmbed ONNX chạy không cần internet sau khi model đã download.
+**Design philosophy:**
+- **Agent-driven KG** — kioku-lite never calls an LLM. The agent extracts entities → calls `kg-index` to store them in the graph.
+- **SQLite-everything** — BM25 (FTS5) + vector (sqlite-vec) + knowledge graph all in one `.db` file.
+- **Offline-capable** — FastEmbed ONNX runs without internet once the model has been downloaded.
 
 ## High-Level Architecture
 
@@ -54,11 +54,11 @@ kioku-agent-kit-lite là personal memory engine cho AI agents với thiết kế
 src/kioku_lite/
 ├── __init__.py
 ├── config.py          # Settings (Pydantic) — env vars KIOKU_LITE_*
-├── service.py         # KiokuLiteService — tất cả business logic
+├── service.py         # KiokuLiteService — all business logic
 ├── cli.py             # CLI (Typer) — 12 commands
 │
 ├── pipeline/          # WRITE path
-│   ├── db.py          # KiokuDB — facade cho SQLiteStore + GraphStore
+│   ├── db.py          # KiokuDB — facade for SQLiteStore + GraphStore
 │   ├── sqlite_store.py # FTS5 (BM25) + sqlite-vec (vector) tables
 │   ├── graph_store.py  # SQLite KG: entities, relations, aliases
 │   └── embedder.py    # FastEmbedder (ONNX) | OllamaEmbedder | FakeEmbedder
@@ -104,8 +104,8 @@ See [02-write-save-kg-index.md](02-write-save-kg-index.md) for full details.
 
 ```
 Agent extracts from context:
-  entities     → [{"name": "Hùng", "type": "PERSON"}, ...]
-  relationships → [{"source": "Hùng", "rel_type": "WORKS_ON", "target": "Kioku"}]
+  entities     → [{"name": "Alice", "type": "PERSON"}, ...]
+  relationships → [{"source": "Alice", "rel_type": "WORKS_ON", "target": "Kioku"}]
         ↓
   kioku-lite kg-index <hash> --entities '...' --relationships '...'
         ↓
@@ -126,7 +126,7 @@ All settings via environment variables with prefix `KIOKU_LITE_`:
 | `KIOKU_LITE_EMBED_PROVIDER` | `fastembed` | `fastembed` \| `ollama` \| `fake` |
 | `KIOKU_LITE_EMBED_MODEL` | `intfloat/multilingual-e5-large` | Model name |
 | `KIOKU_LITE_EMBED_DIM` | `1024` | Embedding dimensions |
-| `KIOKU_LITE_OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama URL (nếu dùng) |
+| `KIOKU_LITE_OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama URL (if using Ollama) |
 
 ## Multi-User Isolation
 
@@ -138,7 +138,7 @@ All settings via environment variables with prefix `KIOKU_LITE_`:
 │   │   └── memory/           ← Markdown files
 │   │       └── 2026-02/
 │   │           └── abc123.md
-│   └── phuc/
+│   └── alice/
 │       ├── data/kioku.db
 │       └── memory/
 └── ...
@@ -151,12 +151,15 @@ All settings via environment variables with prefix `KIOKU_LITE_`:
 | Embedder / FastEmbed | Vector indexing skipped. BM25 + KG still work. |
 | sqlite-vec extension | Vector search skipped. BM25 + KG still work. |
 | GraphStore | KG search skipped. BM25 + Vector still work. |
-| SQLite | ❌ Critical — tất cả search fail |
+| SQLite | ❌ Critical — all search operations fail |
 
-## Comparison với kioku-agent-kit (full)
+## Comparison with kioku-agent-kit (full)
+
+kioku-agent-kit (full) is designed for **enterprise and multi-tenant** deployments, while kioku-lite is designed for **personal use, edge computing, and single-agent** setups.
 
 | | kioku-agent-kit-lite | kioku-agent-kit |
 |---|---|---|
+| **Target use case** | Personal, edge, single-agent | Enterprise, multi-tenant, team memory |
 | **Vector store** | sqlite-vec (in-process) | ChromaDB (Docker :8001) |
 | **Graph store** | SQLite BFS | FalkorDB (Docker :6381) |
 | **Embedding** | FastEmbed ONNX (local) | Ollama (Docker :11434) |
@@ -164,4 +167,4 @@ All settings via environment variables with prefix `KIOKU_LITE_`:
 | **Search latency** | ~1.2s | ~2–3s (normal), up to 9s (throttled) |
 | **Setup** | `pip install kioku-agent-kit-lite` | Docker Compose |
 | **Offline capability** | ✅ (embed only) | ❌ (needs Ollama + APIs) |
-| **Ideal use case** | Local dev, edge, serverless | Production, team memory |
+| **Multi-tenant** | Single user, profile-based isolation | Full multi-tenant with API keys |

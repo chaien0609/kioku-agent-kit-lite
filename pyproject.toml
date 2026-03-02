@@ -46,10 +46,11 @@ dev = [
 kioku-lite = "kioku_lite.cli:app"
 
 [project.urls]
-Homepage    = "https://github.com/phuc-nt/kioku-agent-kit-lite"
-Repository  = "https://github.com/phuc-nt/kioku-agent-kit-lite"
-Issues      = "https://github.com/phuc-nt/kioku-agent-kit-lite/issues"
-Changelog   = "https://github.com/phuc-nt/kioku-agent-kit-lite/blob/main/CHANGELOG.md"
+Homepage      = "https://phuc-nt.github.io/kioku-lite-landing/"
+Documentation = "https://phuc-nt.github.io/kioku-lite-landing/blog.html"
+Repository    = "https://github.com/phuc-nt/kioku-agent-kit-lite"
+Issues        = "https://github.com/phuc-nt/kioku-agent-kit-lite/issues"
+Changelog     = "https://github.com/phuc-nt/kioku-agent-kit-lite/blob/main/CHANGELOG.md"
 
 [tool.hatch.metadata]
 allow-direct-references = true
