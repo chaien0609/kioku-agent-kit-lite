@@ -1,171 +1,128 @@
 # kioku-lite
 
-> Personal memory engine for AI agents — zero Docker, SQLite-everything.
+> Personal memory engine for AI agents. Tri-hybrid search, zero Docker, single SQLite file.
 
 [![PyPI](https://img.shields.io/pypi/v/kioku-lite)](https://pypi.org/project/kioku-lite/)
 [![Python](https://img.shields.io/pypi/pyversions/kioku-lite)](https://pypi.org/project/kioku-lite/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**kioku-lite** (*kioku = memory in Japanese*) is a lightweight, fully local memory engine that gives AI agents long-term memory. It stores, indexes, and retrieves personal memories using tri-hybrid search — all within a single SQLite file, no Docker or external servers required.
+**kioku-lite** (*kioku = memory in Japanese*) gives AI agents long-term memory with causal reasoning. It stores, indexes, and retrieves personal memories using tri-hybrid search (BM25 + Vector + Knowledge Graph) — all within a single SQLite file.
 
-🌐 **Homepage:** [phuc-nt.github.io/kioku-lite-landing](https://phuc-nt.github.io/kioku-lite-landing/)
-📦 **PyPI:** [pypi.org/project/kioku-lite](https://pypi.org/project/kioku-lite/)
-📖 **Blog & Guides:** [phuc-nt.github.io/kioku-lite-landing/blog.html](https://phuc-nt.github.io/kioku-lite-landing/blog.html)
+**[Homepage](https://phuc-nt.github.io/kioku-lite-landing/)** · **[Docs](https://phuc-nt.github.io/kioku-lite-landing/blog.html)** · **[Blog (EN)](https://phuc-nt.github.io/kioku-lite-landing/blog.html#kioku-intro)** · **[Blog (VN)](https://phuc-nt.github.io/kioku-lite-landing/blog.html#kioku-intro-vn)** · **[PyPI](https://pypi.org/project/kioku-lite/)**
 
 ---
 
+## Why kioku-lite
+
+Most agent memory systems store flat text or vectors. They can't answer *"Why was I stressed last month?"* because they don't track how events, emotions, and decisions connect. kioku-lite solves this with a Knowledge Graph on top of traditional search — and it runs 100% local with no LLM calls.
+
 ## Features
 
-- ✅ **Tri-hybrid search** — BM25 (FTS5) + Vector (sqlite-vec) + Knowledge Graph (SQLite)
-- ✅ **Zero Docker** — no ChromaDB, FalkorDB, or Ollama server needed
-- ✅ **FastEmbed ONNX** — local embedding, offline-capable (`intfloat/multilingual-e5-large`)
-- ✅ **Agent-driven KG** — agent extracts entities → `kg-index` (no built-in LLM dependency)
-- ✅ **CLI** — `kioku-lite save`, `search`, `kg-index`, `recall`, `connect`, and more
-- ✅ **Python API** — import `KiokuLiteService` directly into your code
-- ✅ **Multilingual** — Vietnamese, English, and 100+ languages
-- ✅ **Agent Profiles** — built-in personas (companion, mentor) with `install-profile`
+- **Tri-hybrid search** — BM25 (FTS5) + Vector (sqlite-vec) + Knowledge Graph
+- **Zero infrastructure** — no Docker, no ChromaDB, no external servers
+- **Fully offline** — FastEmbed ONNX embedding, no API keys needed
+- **Agent-driven KG** — agent extracts entities and indexes them (no built-in LLM)
+- **CLI + Python API** — works with any agent that runs shell commands
+- **Built-in personas** — companion (emotion tracking) and mentor (decision tracking)
+- **Multilingual** — 100+ languages via multilingual-e5-large
 
-## Installation
+## Install
 
 ```bash
+pipx install "kioku-lite[cli]"        # recommended
+# or
 pip install "kioku-lite[cli]"
 ```
 
-Or with [pipx](https://pipx.pypa.io/) (recommended for CLI-only use):
-
-```bash
-pipx install "kioku-lite[cli]"
-```
-
-## Quick Start
-
-### CLI
+## Quick start
 
 ```bash
 # Save a memory
-kioku-lite save "Had coffee with Alice today. Discussed the Kioku project." --mood work
+kioku-lite save "Had coffee with Alice. Discussed the Kioku project." --mood work
 
-# Search memories (tri-hybrid: BM25 + vector + graph)
+# Search (tri-hybrid: BM25 + vector + KG)
 kioku-lite search "What has Alice been up to?"
 
 # Index knowledge graph (agent provides extracted entities)
 kioku-lite kg-index <content_hash> \
-  --entities '[{"name":"Alice","type":"PERSON"},{"name":"Kioku","type":"PROJECT"}]' \
+  --entities '[{"name":"Alice","type":"PERSON"}]' \
   --relationships '[{"source":"Alice","rel_type":"WORKS_ON","target":"Kioku"}]'
 
 # Recall everything about an entity
 kioku-lite recall "Alice"
-
-# Find connections between entities
-kioku-lite connect "Alice" "Kioku"
 ```
 
-### Python API
+<details>
+<summary>Python API</summary>
 
 ```python
 from kioku_lite.service import KiokuLiteService
 
 svc = KiokuLiteService()
-
-# Save
-result = svc.save_memory("Met Alice and Bob at the café.", mood="happy")
-print(result["content_hash"])
-
-# Search (BM25 + Vector + KG)
-results = svc.search_memories("Who did I meet today?", limit=5)
-for r in results["results"]:
-    print(r["content"], r["score"])
+result = svc.save_memory("Met Alice at the café.", mood="happy")
+results = svc.search_memories("Who did I meet?", limit=5)
 ```
 
-## How It Works
+</details>
 
-```
-┌─────────────────────────────────────────────┐
-│              Agent (Claude, GPT, …)         │
-│                                             │
-│  1. Save memory    → kioku-lite save "..."  │
-│  2. Extract entities (using agent's own LLM)│
-│  3. Index KG       → kioku-lite kg-index    │
-│  4. Search         → kioku-lite search "…"  │
-└──────────────────┬──────────────────────────┘
-                   ▼
-┌─────────────────────────────────────────────┐
-│          KiokuLiteService                   │
-│                                             │
-│  MarkdownStore  → ~/memory/*.md (backup)    │
-│  FastEmbed ONNX → local 1024-dim embedding  │
-│  SQLite DB      → BM25 + Vector + KG       │
-└─────────────────────────────────────────────┘
-```
+## Agent integration
 
-> **Design principle:** kioku-lite **never calls an LLM** — the agent is responsible for extracting entities from its own conversation context. This keeps the memory engine 100% local and LLM-agnostic.
+kioku-lite works with any AI agent that can run CLI commands. Setup guides:
 
-## Agent Integration
-
-kioku-lite works with any AI agent that can run CLI commands:
-
-| Agent | Setup |
-|---|---|
-| **Claude Code** | `kioku-lite init --global` → auto-discovers skill |
-| **Cursor / Windsurf** | `kioku-lite init` per project |
-| **OpenClaw** | `kioku-lite install-profile <persona>` → derive SOUL.md + TOOLS.md |
-
-Built-in personas:
+- **[Claude Code / Cursor / Windsurf](https://phuc-nt.github.io/kioku-lite-landing/agent-setup.html)** — copy-paste the guide, agent does the rest
+- **[OpenClaw](https://phuc-nt.github.io/kioku-lite-landing/openclaw-setup.html)** — auto-generates SOUL.md + TOOLS.md
 
 ```bash
-kioku-lite install-profile companion   # Emotional companion
-kioku-lite install-profile mentor      # Business & career mentor
+kioku-lite install-profile companion   # emotion tracking persona
+kioku-lite install-profile mentor      # decision tracking persona
 ```
 
-For full setup instructions, visit the [Blog & Guides](https://phuc-nt.github.io/kioku-lite-landing/blog.html).
+## Architecture
+
+```
+Agent (Claude Code, Cursor, …)
+  │
+  ├─ save "..."          ──→  SQLite FTS5 + sqlite-vec + Markdown backup
+  ├─ kg-index <hash>     ──→  GraphStore (nodes, edges, aliases)
+  └─ search "..."        ──→  BM25 ∪ Vector ∪ KG → RRF rerank
+```
+
+> kioku-lite **never calls an LLM**. The agent extracts entities from its own context, keeping the memory engine 100% local and LLM-agnostic.
+
+Deep dive: [System Architecture](https://phuc-nt.github.io/kioku-lite-landing/blog.html#system-architecture) · [Write Pipeline](https://phuc-nt.github.io/kioku-lite-landing/blog.html#write-save-kg-index) · [Search Pipeline](https://phuc-nt.github.io/kioku-lite-landing/blog.html#search-architecture)
 
 ## Benchmark
 
-Compared against [kioku-agent-kit](https://github.com/phuc-nt/kioku-agent-kit) (full Docker stack), using the same embedding model and Claude Haiku for KG extraction:
+vs [kioku-agent-kit](https://github.com/phuc-nt/kioku-agent-kit) (full Docker stack):
 
-| Metric | kioku-agent-kit (Docker) | kioku-lite | |
-|---|---|---|---|
-| Search latency | ~2–3s | **~1.2s** | **lite is faster** |
-| Precision@3 | 0.60 | **0.60** | **Equal** |
-| Recall@5 | **1.04** | 0.89 | kit slightly better |
-| Infrastructure | 3 Docker containers | **Zero** | **lite wins** |
+| Metric | Docker stack | kioku-lite |
+|---|---|---|
+| Search latency | ~2-3s | **~1.2s** |
+| Precision@3 | 0.60 | **0.60** |
+| Infrastructure | 3 containers | **zero** |
 
-> **Positioning:** kioku-agent-kit (full) is designed for **enterprise and multi-tenant** deployments — with Docker-based infrastructure (ChromaDB, FalkorDB, Ollama) and built-in LLM entity extraction. **kioku-lite** is designed for **personal use, edge computing, and single-agent** setups — zero infrastructure, fully local, and offline-capable. Same search quality, different scale.
+kioku-lite targets **personal use and single-agent** setups. kioku-agent-kit targets **enterprise multi-tenant** deployments.
 
 ## Configuration
 
-All settings via environment variables with prefix `KIOKU_LITE_`:
+All settings via `KIOKU_LITE_` env vars or `.env` file:
 
 | Variable | Default | Description |
 |---|---|---|
 | `KIOKU_LITE_USER_ID` | `default` | User ID for data isolation |
-| `KIOKU_LITE_DATA_DIR` | `~/.kioku-lite/data` | SQLite DB directory |
-| `KIOKU_LITE_MEMORY_DIR` | `~/.kioku-lite/memory` | Markdown backup directory |
-| `KIOKU_LITE_EMBED_PROVIDER` | `fastembed` | `fastembed` \| `ollama` \| `fake` |
-| `KIOKU_LITE_EMBED_MODEL` | `intfloat/multilingual-e5-large` | Embedding model name |
-| `KIOKU_LITE_EMBED_DIM` | `1024` | Embedding dimensions |
-
-Or use a `.env` file:
-
-```env
-KIOKU_LITE_USER_ID=alice
-KIOKU_LITE_EMBED_PROVIDER=fastembed
-```
+| `KIOKU_LITE_DATA_DIR` | `~/.kioku-lite/data` | SQLite DB location |
+| `KIOKU_LITE_MEMORY_DIR` | `~/.kioku-lite/memory` | Markdown backup location |
+| `KIOKU_LITE_EMBED_MODEL` | `intfloat/multilingual-e5-large` | Embedding model |
 
 ## Development
 
 ```bash
 git clone https://github.com/phuc-nt/kioku-agent-kit-lite
 cd kioku-agent-kit-lite
-python -m venv .venv && source .venv/bin/activate
 pip install -e ".[cli,dev]"
 pytest
 ```
 
-## Contributing
-
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
 ## License
 
-[MIT](LICENSE) © 2026 Phúc Nguyễn
+[MIT](LICENSE) © 2026 Phuc Nguyen
