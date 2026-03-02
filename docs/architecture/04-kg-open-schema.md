@@ -1,6 +1,6 @@
 # KG Open Schema — Extensible Entity & Relationship Types
 
-> Last updated: 2026-03-02 (v0.1.18)
+
 
 ---
 

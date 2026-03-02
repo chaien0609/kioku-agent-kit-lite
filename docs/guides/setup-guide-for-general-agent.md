@@ -1,6 +1,6 @@
 # Agent Setup Guide for Kioku Lite
 
-> Version: 0.1.18 | Compatible with: Claude Code, Cursor, Windsurf, and any agent supporting AGENTS.md / SKILL.md
+> Compatible with: Claude Code, Cursor, Windsurf, and any agent supporting AGENTS.md / SKILL.md
 
 ---
 

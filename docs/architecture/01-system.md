@@ -1,6 +1,6 @@
 # System Architecture — kioku-agent-kit-lite
 
-> Last updated: 2026-03-02 (v0.1.18)
+
 
 ## Overview
 

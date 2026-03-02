@@ -1,6 +1,6 @@
 # Search Architecture — How It Works
 
-> Last updated: 2026-02-27 (v0.1.0)
+
 
 ## Overview
 
