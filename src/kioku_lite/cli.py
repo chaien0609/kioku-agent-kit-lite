@@ -470,67 +470,6 @@ def install_profile(
     typer.echo("")
 
 
-# ── install-openclaw ───────────────────────────────────────────────────────────
-
-@app.command()
-def install_openclaw(
-    profile_name: str = typer.Argument(..., help="Profile to install (companion, mentor)."),
-    workspace: str = typer.Argument(..., help="Path to the OpenClaw agent workspace directory."),
-) -> None:
-    """Install Kioku Lite files into an existing OpenClaw agent workspace.
-
-    Copies SOUL.md and TOOLS.md (pre-configured for the chosen profile) into
-    the specified OpenClaw workspace directory (~/.openclaw/workspace-<name>/).
-
-    Example:
-        kioku-lite install-openclaw companion ~/.openclaw/workspace-kioku-companion
-    """
-    RESOURCES = Path(__file__).parent / "resources" / "openclaw"
-    profile_dir = RESOURCES / profile_name
-
-    if not profile_dir.exists() or not profile_dir.is_dir():
-        typer.echo(f"⚠️  OpenClaw profile '{profile_name}' not found. Available:", err=True)
-        if RESOURCES.exists():
-            for p in RESOURCES.iterdir():
-                if p.is_dir():
-                    typer.echo(f"  - {p.name}")
-        raise typer.Exit(1)
-
-    soul_src  = profile_dir / "SOUL.md"
-    tools_src = profile_dir / "TOOLS.md"
-
-    if not soul_src.exists() or not tools_src.exists():
-        typer.echo(f"⚠️  Profile '{profile_name}' files are missing (SOUL.md or TOOLS.md).", err=True)
-        raise typer.Exit(1)
-
-    workspace_path = Path(workspace).expanduser().resolve()
-    if not workspace_path.exists():
-        typer.echo(f"⚠️  Workspace path does not exist: {workspace_path}", err=True)
-        typer.echo("Create it first: mkdir -p <workspace_path>")
-        raise typer.Exit(1)
-
-    soul_dst  = workspace_path / "SOUL.md"
-    tools_dst = workspace_path / "TOOLS.md"
-
-    soul_dst.write_text(soul_src.read_text(encoding="utf-8"))
-    tools_dst.write_text(tools_src.read_text(encoding="utf-8"))
-
-    typer.echo("")
-    typer.echo(f"✅ OpenClaw profile '{profile_name}' installed into: {workspace_path}")
-    typer.echo(f"   {soul_dst}")
-    typer.echo(f"   {tools_dst}")
-    typer.echo("")
-    typer.echo("Next steps:")
-    typer.echo("  1. Replace <BOT_ID> in TOOLS.md with your actual Telegram Bot ID.")
-    typer.echo("  2. Replace <UserName> in TOOLS.md with the user's name.")
-    typer.echo("  3. Register the agent in ~/.openclaw/openclaw.json (agents.list + bindings).")
-    typer.echo("  4. Restart gateway: openclaw gateway restart")
-    typer.echo("")
-    typer.echo("Create the Kioku profile for the bot:")
-    typer.echo(f"  kioku-lite users --create <BOT_ID>")
-    typer.echo(f"  kioku-lite users --use <BOT_ID>")
-    typer.echo("")
-
-
 if __name__ == "__main__":
     app()
+

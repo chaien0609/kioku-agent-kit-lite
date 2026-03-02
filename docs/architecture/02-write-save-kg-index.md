@@ -1,30 +1,30 @@
 # Write Architecture — Save & KG Index
 
-> Last updated: 2026-02-28 (v0.1.14)
+> Last updated: 2026-03-02 (v0.1.18)
 
 ---
 
 ## Overview
 
-Write pipeline trong kioku-lite gồm 2 bước liên tiếp do agent thực hiện:
+The write pipeline in kioku-lite has two sequential steps performed by the agent:
 
-1. **`save`** — lưu text vào 3 stores song song (Markdown backup + FTS5 + vector)
-2. **`kg-index`** — agent tự extract entities → index vào Knowledge Graph
+1. **`save`** — stores text into 3 stores in parallel (Markdown backup + FTS5 + vector)
+2. **`kg-index`** — the agent extracts entities from conversation context → indexes into the Knowledge Graph
 
-Khác với kioku full: **không có LLM call** trong pipeline — agent đang dùng kioku-lite chịu trách nhiệm extract entities từ conversation context của chính nó.
+Unlike the full kioku stack: **no LLM call** is made inside the pipeline — the agent using kioku-lite is responsible for entity extraction from its own conversation context.
 
 ---
 
-## Pipeline tổng thể
+## Pipeline
 
 ```
-Agent gọi: kioku-lite save "text..." --mood work
+Agent calls: kioku-lite save "text..." --mood work
   ↓
 ┌──────────────────────────────────────────────┐
 │  save_memory(text, mood, tags, event_time)   │
 │                                              │
 │  1. content_hash = SHA256(text)              │
-│     (dedup key — same text không save lại)   │
+│     (dedup key — same text won't re-save)    │
 │                                              │
 │  2. vector = Embedder.embed("passage: {text")│
 │     FastEmbed ONNX, 1024-dim                 │
@@ -37,10 +37,10 @@ Agent gọi: kioku-lite save "text..." --mood work
   ↓
 Response: {content_hash, vector_indexed, hint: "Run kg-index"}
 
-  ↓ Agent tự extract entities từ conversation context
+  ↓ Agent extracts entities from conversation context
 kioku-lite kg-index <content_hash> \
-  --entities '[{"name":"Hùng","type":"PERSON"}]' \
-  --relationships '[{"source":"Hùng","rel_type":"WORKS_ON","target":"Kioku"}]'
+  --entities '[{"name":"Alice","type":"PERSON"}]' \
+  --relationships '[{"source":"Alice","rel_type":"WORKS_ON","target":"Kioku"}]'
   ↓
 GraphStore.upsert_node(entities) → kg_nodes
 GraphStore.upsert_edge(rels, source_hash) → kg_edges
@@ -73,7 +73,7 @@ sequenceDiagram
 
     S-->>A: {content_hash, vector_indexed:true, hint}
 
-    Note over A: Agent extract entities<br/>từ conversation context<br/>(LLM riêng — Claude/GPT/local)
+    Note over A: Agent extracts entities<br/>from conversation context<br/>(using its own LLM — Claude/GPT/local)
 
     A->>S: kg_index(content_hash, entities, rels)
     S->>DB: upsert_node(entities) → kg_nodes
@@ -88,12 +88,12 @@ sequenceDiagram
 
 ### 1. Markdown Files (Human-readable backup)
 - **Path:** `~/.kioku-lite/users/<id>/memory/YYYY-MM/{hash[:8]}.md`
-- **Purpose:** Source-of-truth dự phòng, human inspectable, git-trackable
+- **Purpose:** Fallback source of truth, human inspectable, git-trackable
 - **Content:** Raw text + YAML frontmatter (mood, tags, event_time)
 
 ### 2. SQLite FTS5 (BM25 keyword search)
 - **Table:** `memories` + `memory_fts` (FTS5 virtual table)
-- **Primary document store:** Search results được hydrate từ đây qua `content_hash`
+- **Primary document store:** Search results are hydrated from here via `content_hash`
 - **Fields:** `content`, `mood`, `tags`, `date`, `event_time`, `content_hash`
 
 ### 3. sqlite-vec (Vector similarity)
@@ -103,38 +103,38 @@ sequenceDiagram
 
 ### 4. GraphStore (Knowledge Graph) — Agent-driven
 - **Tables:** `kg_nodes`, `kg_edges`, `kg_aliases`
-- **Populated by:** Agent gọi `kg-index` sau save
-- **Schema:** Open — `type` và `rel_type` là plain TEXT, không enum cố định
+- **Populated by:** Agent calling `kg-index` after save
+- **Schema:** Open — `type` and `rel_type` are plain TEXT, no fixed enum
 
 ---
 
 ## Content Hash Linking
 
-`content_hash` (SHA256) là universal key liên kết tất cả stores:
+`content_hash` (SHA256) is the universal key linking all stores:
 
 ```
 Markdown file      ─── content_hash ───┐
 memories row       ─── content_hash ───┤
 memory_vec row     ─── content_hash ───┤
 kg_edges.source_hash                ───┘
-  (= content_hash của memory chứa relationship)
+  (= content_hash of the memory containing the relationship)
 ```
 
-Cho phép:
-- **Dedup:** Same text → same hash → không index lại
+Enables:
+- **Dedup:** Same text → same hash → no re-indexing
 - **Hydration:** Graph edge → `source_hash` → SQLite → full original text
-- **Consistency:** Mọi store reference cùng content
+- **Consistency:** All stores reference the same content
 
 ---
 
-## KG Index — Tại sao Agent-Driven?
+## KG Index — Why Agent-Driven?
 
-| Reason | Giải thích |
-|--------|-----------|
-| Context đã có | Agent đang hội thoại → không cần re-read text để extract |
-| LLM-agnostic | Dùng Claude, GPT, Gemini, local model — kioku không quan tâm |
-| Cost control | Agent chọn cheap model để extract, expensive model cho reasoning |
-| Fully offline | kioku-lite 100% offline sau khi embed model download |
+| Reason | Explanation |
+|--------|-------------|
+| Context already available | Agent is in a conversation → no need to re-read text for extraction |
+| LLM-agnostic | Works with Claude, GPT, Gemini, local models — kioku doesn't care |
+| Cost control | Agent can use a cheap model for extraction, expensive model for reasoning |
+| Fully offline | kioku-lite is 100% offline after the embed model is downloaded |
 
 ### Benchmark: Agent-driven vs static KG
 
@@ -143,13 +143,13 @@ Cho phép:
 | Pre-defined (static) | 0.40 | 0.75 |
 | Claude Haiku extraction | **0.60** | **0.89** |
 
-Agent-driven tăng 50% recall so với pre-defined entities.
+Agent-driven extraction improves recall by ~50% vs pre-defined entities.
 
 ---
 
 ## Entity & Relationship Types
 
-**Open schema** — bất kỳ string nào đều hợp lệ. Xem [05-kg-open-schema.md](05-kg-open-schema.md) để biết chi tiết.
+**Open schema** — any string is valid. See [04-kg-open-schema.md](04-kg-open-schema.md) for details.
 
 Recommended defaults:
 
@@ -163,22 +163,22 @@ Recommended defaults:
 
 ## E5 Embedding Prefix
 
-Model `intfloat/multilingual-e5-large` yêu cầu instruction prefix:
+Model `intfloat/multilingual-e5-large` requires instruction prefixes:
 
 | Operation | Prefix |
 |---|---|
 | Indexing (`save`) | `passage: {text}` |
 | Querying (`search`) | `query: {text}` |
 
-Được apply tự động trong `FastEmbedder` / `OllamaEmbedder`.
+Applied automatically inside `FastEmbedder` / `OllamaEmbedder`.
 
 ---
 
 ## Graceful Degradation
 
-| Component | Trạng thái | Impact |
+| Component | State | Impact |
 |---|---|---|
-| FastEmbed / ONNX | Unavailable | `vector_indexed: false`, BM25 + KG vẫn hoạt động |
-| sqlite-vec | Missing | Semantic search skip, BM25 + KG vẫn hoạt động |
-| GraphStore | Error | kg-index fail, search vẫn BM25 + Vector |
-| SQLite | ❌ | Critical failure, không fallback |
+| FastEmbed / ONNX | Unavailable | `vector_indexed: false`, BM25 + KG still work |
+| sqlite-vec | Missing | Semantic search skipped, BM25 + KG still work |
+| GraphStore | Error | kg-index fails, search still uses BM25 + Vector |
+| SQLite | ❌ | Critical failure, no fallback |
