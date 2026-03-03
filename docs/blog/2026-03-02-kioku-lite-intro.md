@@ -107,11 +107,14 @@ Khi cần bối cảnh: Agent gọi `search`. Kết quả tìm kiếm sẽ đi q
 
 Thường thì anh em dùng Claude Code hay OpenClaw sẽ thắc mắc memory có gì khác biệt. Đây là bảng so sánh nhanh:
 
-| System | Memory Model | Persistence | Search | Knowledge Graph |
+| System | Infrastructure | LLM required | Search | Knowledge Graph |
 |---|---|---|---|---|
-| **Claude Code** | Flat markdown files | Session-scoped + `CLAUDE.md` / `MEMORY.md` | None (context window only) | Không |
-| **OpenClaw** | SQLite chunks + embeddings | Per-agent SQLite database | Semantic (embedding-based) | Không |
-| **Kioku Lite** | SQLite + Markdown + KG | Per-profile isolated stores | Tri-hybrid (BM25 + vector + KG) | Có (Agent-driven) |
+| **Mem0** | Cloud-managed | Có — mỗi lần ghi | Vector + Graph | Có, managed |
+| **Claude Code** | Flat markdown files | Không | Context window only | Không |
+| **OpenClaw** | SQLite per-agent | Không | Semantic (embedding-based) | Không |
+| **Kioku Lite** | Single SQLite file | Agent-driven, không thêm | Tri-hybrid (BM25 + vector + KG) | Có (Agent-driven) |
+
+Một lưu ý về **Mem0**: đây là nền tảng memory managed khá nổi tiếng, nhắm vào production app — mỗi lần ghi nó gọi LLM để tự extract và nén ký ức, rồi lưu vào vector store trên cloud. Mạnh cho enterprise, nhưng data rời khỏi máy bạn và mỗi lần save tốn thêm một lần gọi LLM. Kioku Lite đặt cược ngược lại: agent đang gọi kioku-lite *đã là một LLM rồi*, không cần thêm LLM call nào nữa. Mọi thứ ở trên thiết bị, offline, và miễn phí sau khi setup.
 
 *(Đọc thêm chi tiết tại trang tài liệu chính thức: [System Architecture](https://phuc-nt.github.io/kioku-lite-landing/blog.html#system-architecture) | [Write/Save/KG-Index](https://phuc-nt.github.io/kioku-lite-landing/blog.html#write-save-kg-index) | [Search Architecture](https://phuc-nt.github.io/kioku-lite-landing/blog.html#search-architecture) | [Memory Comparison](https://phuc-nt.github.io/kioku-lite-landing/blog.html#memory-comparison))*
 
@@ -143,7 +146,7 @@ Việc của bạn chỉ đơn giản là copy hướng dẫn tương ứng đư
 
 Mình ra mắt **kioku-lite** trước tiên ưu tiên cho nhóm Personal User. Quá trình setup cực kỳ nhanh gọn thông qua `pipx`, không đòi hỏi phải dựng Docker, API keys hay external database như ChromaDB/FalkorDB. Bạn có thể dùng ngầm định ở dưới background máy cá nhân rất mượt.
 
-Trong khi đó, phiên bản **kioku-full** với graph database và vector database chuyên dụng, hỗ trợ multi-tenant cho Enterprise vẫn đang trong quá trình phát triển và hoàn thiện.
+Trong khi đó, phiên bản **kioku-full** với graph database và vector database chuyên dụng, hỗ trợ multi-tenant cho Enterprise vẫn đang trong quá trình phát triển và hoàn thiện. Về quy mô infrastructure, kioku-full sẽ gần hơn với những gì Mem0 đang cung cấp — nhưng vẫn giữ nguyên triết lý agent-driven (không có LLM extraction tích hợp sẵn) và tri-hybrid search làm điểm khác biệt cốt lõi.
 
 ## Lời kết
 

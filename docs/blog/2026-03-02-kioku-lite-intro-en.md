@@ -107,11 +107,14 @@ When context is needed: The agent calls `search`. Results go through 3 separate 
 
 How does Kioku Lite compare to familiar systems?
 
-| System | Memory Model | Persistence | Search | Knowledge Graph |
+| System | Infrastructure | LLM required | Search | Knowledge Graph |
 |---|---|---|---|---|
-| **Claude Code** | Flat markdown files | Session-scoped + `CLAUDE.md` / `MEMORY.md` | None (context window only) | No |
-| **OpenClaw** | SQLite chunks + embeddings | Per-agent SQLite database | Semantic (embedding-based) | No |
-| **Kioku Lite** | SQLite + Markdown + KG | Per-profile isolated stores | Tri-hybrid (BM25 + vector + KG) | Yes (Agent-driven) |
+| **Mem0** | Cloud-managed | Yes — every write | Vector + Graph | Yes, managed |
+| **Claude Code** | Flat markdown files | No | Context window only | No |
+| **OpenClaw** | SQLite per-agent | No | Semantic (embedding-based) | No |
+| **Kioku Lite** | Single SQLite file | Agent-driven, zero extra | Tri-hybrid (BM25 + vector + KG) | Yes (Agent-driven) |
+
+A note on **Mem0**: it's a well-known managed memory platform targeting production apps — it calls an LLM on every write to auto-extract and compress memories, then stores them in a cloud-managed vector store. Powerful for enterprise use, but data leaves your machine and every save costs an LLM round-trip. Kioku Lite takes the opposite bet: the agent calling kioku-lite *is already an LLM*, so there's no need for a second LLM call. Everything stays on-device, offline, and free after setup.
 
 *(Deep dive: [System Architecture](https://phuc-nt.github.io/kioku-lite-landing/blog.html#system-architecture) | [Write Pipeline](https://phuc-nt.github.io/kioku-lite-landing/blog.html#write-save-kg-index) | [Search Architecture](https://phuc-nt.github.io/kioku-lite-landing/blog.html#search-architecture) | [Memory Comparison](https://phuc-nt.github.io/kioku-lite-landing/blog.html#memory-comparison))*
 
@@ -142,7 +145,7 @@ Full details at [Kioku Lite Homepage](https://phuc-nt.github.io/kioku-lite-landi
 
 **kioku-lite** ships first, targeting Personal Users. Setup is fast via `pipx`, no Docker, no API keys, no external databases like ChromaDB/FalkorDB. Runs silently in the background on your personal machine.
 
-Meanwhile, **kioku-full** with dedicated graph and vector databases, multi-tenant Enterprise support, is still under active development.
+Meanwhile, **kioku-full** with dedicated graph and vector databases, multi-tenant Enterprise support, is still under active development. In terms of infrastructure scale, kioku-full will be closer to what Mem0 offers — but it will remain agent-driven (no built-in LLM extraction) and keep the tri-hybrid search model as its core differentiator.
 
 ## Closing
 

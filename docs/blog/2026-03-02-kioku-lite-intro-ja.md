@@ -107,11 +107,14 @@ Kioku Liteは **Tri-hybrid**（3つのハイブリッド）検索メカニズム
 
 主要システムとの比較：
 
-| システム | メモリモデル | 永続化 | 検索 | Knowledge Graph |
+| システム | インフラ | LLM必須 | 検索 | Knowledge Graph |
 |---|---|---|---|---|
-| **Claude Code** | フラットMarkdownファイル | セッション + `CLAUDE.md` | なし（コンテキストウィンドウのみ） | なし |
-| **OpenClaw** | SQLiteチャンク + embedding | エージェント別SQLite | セマンティック（embedding） | なし |
-| **Kioku Lite** | SQLite + Markdown + KG | プロファイル別分離ストア | Tri-hybrid (BM25 + vector + KG) | あり（エージェント駆動） |
+| **Mem0** | クラウド管理 | あり — 書き込みごと | Vector + Graph | あり（マネージド） |
+| **Claude Code** | フラットMarkdownファイル | なし | コンテキストウィンドウのみ | なし |
+| **OpenClaw** | エージェント別SQLite | なし | セマンティック（embedding） | なし |
+| **Kioku Lite** | SQLiteファイル1つ | エージェント駆動、追加なし | Tri-hybrid (BM25 + vector + KG) | あり（エージェント駆動） |
+
+**Mem0**について：本番アプリ向けのマネージドメモリプラットフォームとして知られており、書き込みのたびにLLMを呼び出してメモリを自動抽出・圧縮し、クラウド管理のベクターストアに保存します。エンタープライズ用途では強力ですが、データはデバイスを離れ、保存のたびにLLM呼び出しコストが発生します。Kioku Liteは逆の発想を取ります：kioku-liteを呼び出すエージェント*自体がすでにLLM*なので、追加のLLM呼び出しは不要。セットアップ後はすべてオンデバイス、オフライン、無料で動作します。
 
 *(詳細: [System Architecture](https://phuc-nt.github.io/kioku-lite-landing/blog.html#system-architecture) | [Write Pipeline](https://phuc-nt.github.io/kioku-lite-landing/blog.html#write-save-kg-index) | [Search Architecture](https://phuc-nt.github.io/kioku-lite-landing/blog.html#search-architecture) | [Memory Comparison](https://phuc-nt.github.io/kioku-lite-landing/blog.html#memory-comparison))*
 
@@ -142,7 +145,7 @@ kioku-liteには**2つのビルトインペルソナ**が付属：
 
 **kioku-lite** はまず個人ユーザー向けに公開。`pipx` で素早いセットアップ、Docker不要、APIキー不要、ChromaDB/FalkorDBなどの外部データベース不要。パーソナルマシンのバックグラウンドでスムーズに動作します。
 
-一方、専用のグラフ/ベクトルデータベースとマルチテナントエンタープライズサポートを備えた **kioku-full** は現在開発中です。
+一方、専用のグラフ/ベクトルデータベースとマルチテナントエンタープライズサポートを備えた **kioku-full** は現在開発中です。インフラ規模という点では、kioku-fullはMem0が提供するものに近づきますが、エージェント駆動（内蔵LLM抽出なし）とtri-hybridサーチという核心的な差別化要素は維持し続けます。
 
 ## おわりに
 
