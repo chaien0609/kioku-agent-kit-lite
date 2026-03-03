@@ -123,7 +123,7 @@ def export_html(graph_data: dict, output_path: str | Path, title: str = "Kioku K
         cdn_resources="in_line",  # fully offline — embeds vis-network JS inline
         bgcolor="#1a1a2e",
         font_color="#e0e0e0",
-        heading=title,
+        heading="",  # empty — pyvis duplicates heading as visible h1 + <title>
     )
 
     # Physics: Barnes-Hut gives good spacing for medium graphs
