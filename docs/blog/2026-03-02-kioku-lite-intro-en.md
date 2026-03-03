@@ -112,7 +112,7 @@ How does Kioku Lite compare to familiar systems?
 | **Mem0** | Cloud-managed | Yes — every write | Vector + Graph | Yes, managed |
 | **Claude Code** | Flat markdown files | No | Context window only | No |
 | **OpenClaw** | SQLite per-agent | No | Semantic (embedding-based) | No |
-| **Kioku Lite** | Single SQLite file | Agent-driven, zero extra | Tri-hybrid (BM25 + vector + KG) | Yes (Agent-driven) |
+| ✦ **Kioku Lite** | **Single SQLite file** | **Agent-driven, zero extra** | **Tri-hybrid (BM25 + vector + KG)** | **Yes (Agent-driven)** |
 
 A note on **Mem0**: it's a well-known managed memory platform targeting production apps — it calls an LLM on every write to auto-extract and compress memories, then stores them in a cloud-managed vector store. Powerful for enterprise use, but data leaves your machine and every save costs an LLM round-trip. Kioku Lite takes the opposite bet: the agent calling kioku-lite *is already an LLM*, so there's no need for a second LLM call. Everything stays on-device, offline, and free after setup.
 

@@ -11,7 +11,7 @@ Four different approaches to agent memory, each with a different design philosop
 | **Mem0** | Cloud-managed | Every write (extraction) | Vector + Graph | ✅ Managed | ❌ |
 | **Claude Code** | Flat markdown files | None | Context window only | ❌ | ✅ |
 | **OpenClaw** | SQLite per-agent | None | Semantic (embedding) | ❌ | ❌ |
-| **Kioku Lite** | Single SQLite file | Agent-driven (no extra call) | Tri-hybrid (BM25 + vector + KG) | ✅ Agent-driven | ✅ |
+| ✦ **Kioku Lite** | **Single SQLite file** | **Agent-driven (no extra call)** | **Tri-hybrid (BM25 + vector + KG)** | **✅ Agent-driven** | **✅** |
 
 ---
 
