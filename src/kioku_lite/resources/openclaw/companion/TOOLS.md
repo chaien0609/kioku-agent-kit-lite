@@ -66,6 +66,7 @@ For true aliases: `kioku-lite kg-alias "Phúc" --aliases '["anh Phúc"]'`
 
 **Rules:**
 - ✅ Use short canonical name: `"Alice"` not `"my friend Alice"`
+- ✅ **Prefer proper names over generic labels:** `"Phong"` not `"Con trai"`, `"Sato"` not `"manager"`. Generic labels make `recall` fail.
 - ✅ Entity names in user's language — do NOT translate
 - ✅ `evidence` = **exact quote** from the saved text supporting the relationship
 - ❌ Skip generic words: `"I"`, `"we"`, `"they"`, `"team"`
@@ -105,7 +106,10 @@ kioku-lite kg-index <content_hash> \
 Never pass raw user queries to search. Always enrich first:
 - Replace pronouns with real entity names
 - Add relevant domain/context keywords
-- Use `--entities` for KG-focused boost
+
+> 🚨 **ALWAYS pass `--entities`** when the query mentions specific people, places, or topics.
+> This activates the **graph search backend**. Without it, only vector+BM25 are used.
+> Extract entity names from the user's question, match against `kioku-lite entities`, and pass as `--entities "Name1,Name2"`.
 
 ---
 

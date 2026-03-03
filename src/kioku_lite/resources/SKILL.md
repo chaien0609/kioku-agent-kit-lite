@@ -165,6 +165,7 @@ Compare extracted names against the returned list. **Reuse existing canonical na
 
 **Extraction rules:**
 - ✅ Use short, canonical name form: `"Alice"` not `"my friend Alice"`
+- ✅ **Prefer proper names over generic labels:** `"Phong"` not `"Con trai"`, `"Sato"` not `"manager"`. Generic labels make `recall` fail.
 - ✅ Entity names in the user's original language — do NOT translate
 - ✅ `evidence` = **exact quote** from the saved text that supports the relationship
 - ❌ Skip generic words: `"I"`, `"we"`, `"they"`, `"team"`, `"everyone"`
@@ -210,10 +211,15 @@ Parse relative time expressions to YYYY-MM-DD relative to today's date:
 | Relational: "who does X work with?" | Use `recall "X"` or `connect "X" "Y"` |
 | Thematic: general topic query | Use semantic search with domain keywords |
 
-### Step 2 — Build and run enriched query
+### Step 2 — Extract entities and build enriched query
+
+> 🚨 **ALWAYS pass `--entities`** when the query mentions or implies specific people, places, or topics.
+> This activates the **graph search backend** — without it, only vector+BM25 are used and relationship-based results are lost.
+
+**How:** Identify entity names from the user's question, match them against known entities (`kioku-lite entities`), and pass as `--entities`.
 
 ```bash
-# Standard search (with entity boost)
+# Standard search — ALWAYS include --entities when applicable
 kioku-lite search "Alice Project X meeting outcomes" --entities "Alice,Project X" --limit 10
 
 # Entity deep dive (graph traversal)
