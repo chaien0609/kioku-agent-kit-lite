@@ -1,6 +1,6 @@
 # System Architecture — kioku-agent-kit-lite
 
-> Last updated: 2026-03-03 (v0.1.22)
+> Last updated: 2026-03-03 (v0.1.26)
 
 ## Overview
 
@@ -22,7 +22,7 @@ kioku-agent-kit-lite is a personal memory engine for AI agents with a **zero-dep
 │   │  • save       • kg-index    • kg-alias               │  │
 │   │  • search     • recall      • connect                │  │
 │   │  • entities   • timeline    • users    • setup       │  │
-│   │  • init       • install-profile                      │  │
+│   │  • init       • install-profile        • export-graph│  │
 │   └──────────────────────────┬────────────────────────────┘  │
 │                              │                               │
 └──────────────────────────────┼───────────────────────────────┘
