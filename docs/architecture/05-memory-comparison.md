@@ -1,16 +1,61 @@
-# Memory Comparison — Kioku Lite vs Claude Code vs OpenClaw
+# Memory Comparison — Kioku Lite vs Mem0 vs Claude Code vs OpenClaw
 
 ---
 
 ## Summary
 
-Three different approaches to agent memory, each with a different design philosophy:
+Four different approaches to agent memory, each with a different design philosophy:
 
-| System | Memory Model | Persistence | Search | Knowledge Graph |
-|---|---|---|---|---|
-| **Claude Code** | Flat markdown files | Session-scoped + `CLAUDE.md` / `MEMORY.md` | None (context window only) | ❌ |
-| **OpenClaw** | SQLite chunks + embeddings | Per-agent SQLite database | Semantic (embedding-based) | ❌ |
-| **Kioku Lite** | SQLite + Markdown + KG | Per-profile isolated stores | Tri-hybrid (BM25 + vector + KG) | ✅ Agent-driven |
+| System | Infrastructure | LLM usage | Search | Knowledge Graph | Offline |
+|---|---|---|---|---|---|
+| **Mem0** | Cloud-managed | Every write (extraction) | Vector + Graph | ✅ Managed | ❌ |
+| **Claude Code** | Flat markdown files | None | Context window only | ❌ | ✅ |
+| **OpenClaw** | SQLite per-agent | None | Semantic (embedding) | ❌ | ❌ |
+| **Kioku Lite** | Single SQLite file | Agent-driven (no extra call) | Tri-hybrid (BM25 + vector + KG) | ✅ Agent-driven | ✅ |
+
+---
+
+## Mem0 — Managed Cloud Memory
+
+### How it works
+
+[Mem0](https://mem0.ai) is a managed memory platform. On every `add()` call, Mem0 invokes an LLM to extract and compress memories, then stores the result in a cloud-managed vector store and optional graph service. Retrieval goes through vector search and reranking, all handled server-side.
+
+```
+Your Agent
+    │
+    └─ mem0 SDK call
+           │
+           ▼
+    Mem0 Platform (cloud)
+    ├── LLM (gpt-4.1-nano by default)   ← extracts & compresses memories
+    ├── Vector store                     ← semantic retrieval
+    ├── Graph service (Mem0g)            ← entity relationships
+    └── Reranker                         ← relevance scoring
+```
+
+Multi-level memory: user-level (persistent across sessions), session-level, and agent state.
+
+### Characteristics
+
+- **Cloud-managed.** The platform runs the vector store, graph service, and reranker. No provisioning needed, but data leaves your machine.
+- **LLM on every write.** Entity extraction and memory compression are automatic, but each `add()` call costs an LLM round-trip.
+- **Vector-primary search.** Semantic retrieval with optional graph traversal (Mem0g) as an add-on.
+- **Enterprise-grade.** SOC 2, HIPAA compliant, versioned memories, audit trail, multi-tenant.
+
+### Strengths
+
+- Zero infra to manage — platform handles everything
+- Automatic memory extraction — agent doesn't need to think about what to save
+- Production-grade compliance and multi-tenancy
+- Strong benchmarks: 26% accuracy gain, 91% lower latency vs full-context approaches
+
+### Limitations
+
+- Always-online — no offline operation
+- LLM cost per write — latency and API spend on every memory addition
+- Data leaves device — privacy consideration for personal use
+- Vendor dependency — self-hosting loses most managed features
 
 ---
 
@@ -122,12 +167,18 @@ Additionally, every memory is persisted as a human-readable Markdown file (`~/.k
 - **Multi-profile isolation.** Each user/persona gets an independent data directory (`~/.kioku-lite/users/<profile_id>/`).
 - **Markdown backup.** Every memory has a human-readable Markdown file — inspectable, git-trackable.
 
+### On LLM usage
+
+Kioku Lite never calls an LLM internally. This is intentional: **the agent is already an LLM**. When Claude Code, Cursor, or any other agent saves a memory, it extracts entities and relationships in its own reasoning step, then calls `kg-index` to index them. No extra LLM call, no extra cost, no extra latency. The memory engine stays lean and LLM-agnostic.
+
 ### Strengths
 
 - Three search signals fused → higher recall than any single method
 - Knowledge graph enables `recall "Alice"`, `connect "Alice" "Project X"`, `entities`
 - Agent-driven extraction works with any LLM (Claude, GPT, Gemini, local)
 - Fully offline after model download (~1.1GB one-time)
+- No LLM cost per memory write
+- 100% on-device — data never leaves your machine
 - Profile isolation with `users --create` / `users --use`
 
 ### Limitations
@@ -136,26 +187,32 @@ Additionally, every memory is persisted as a human-readable Markdown file (`~/.k
 - First-run latency (~5s for model warm-up)
 - KG quality depends on agent extraction quality
 - No automatic conversation compaction (agent manages what to save)
+- Personal scale — not multi-tenant
 
 ---
 
 ## Feature Matrix
 
-| Feature | Claude Code | OpenClaw | Kioku Lite |
-|---|---|---|---|
-| **BM25 keyword search** | ❌ | ✅ (FTS5 on chunks) | ✅ (FTS5 on memories) |
-| **Vector/semantic search** | ❌ | ✅ (per-chunk embeddings) | ✅ (FastEmbed ONNX, 1024-dim) |
-| **Knowledge Graph** | ❌ | ❌ | ✅ (open-schema, BFS traversal) |
-| **Entity recall** | ❌ | ❌ | ✅ (`recall "entity"`) |
-| **Connection queries** | ❌ | ❌ | ✅ (`connect "A" "B"` → path) |
-| **Entity listing** | ❌ | ❌ | ✅ (`entities --limit N`) |
-| **Timeline view** | ❌ | ❌ | ✅ (`timeline`) |
-| **User profile isolation** | ❌ (per-project) | ✅ (per-agent) | ✅ (per-profile, `users` command) |
-| **Auto memory** | `MEMORY.md` (code insights) | ✅ (compaction) | ❌ (agent-explicit) |
-| **Human-readable backup** | ✅ (markdown files) | ❌ (SQLite only) | ✅ (markdown files) |
-| **Git-trackable** | ✅ | ❌ | ✅ |
-| **Offline** | ✅ | ❌ (needs gateway) | ✅ (after model download) |
-| **Setup complexity** | Zero | Gateway + openclaw.json | `pipx install` + `init` |
+| Feature | Mem0 | Claude Code | OpenClaw | Kioku Lite |
+|---|---|---|---|---|
+| **Infrastructure** | Cloud-managed | Markdown files | SQLite per-agent | Single SQLite file |
+| **BM25 keyword search** | ❌ | ❌ | ✅ (FTS5 on chunks) | ✅ (FTS5 on memories) |
+| **Vector/semantic search** | ✅ (cloud) | ❌ | ✅ (per-chunk embeddings) | ✅ (FastEmbed ONNX, 1024-dim) |
+| **Knowledge Graph** | ✅ (managed, Mem0g) | ❌ | ❌ | ✅ (open-schema, BFS traversal) |
+| **Fused ranking (RRF)** | ✅ (reranker) | ❌ | ❌ | ✅ (BM25 + vector + KG) |
+| **Entity recall** | ✅ | ❌ | ❌ | ✅ (`recall "entity"`) |
+| **Connection queries** | ✅ (limited) | ❌ | ❌ | ✅ (`connect "A" "B"` → path) |
+| **Entity listing** | ✅ | ❌ | ❌ | ✅ (`entities --limit N`) |
+| **Timeline view** | ✅ (platform) | ❌ | ❌ | ✅ (`timeline`) |
+| **LLM required** | ✅ (every write) | ❌ | ❌ | ❌ (agent-driven) |
+| **Offline** | ❌ | ✅ | ❌ (needs gateway) | ✅ (after model download) |
+| **Data on-device** | ❌ | ✅ | ✅ | ✅ |
+| **User profile isolation** | ✅ (user/session/agent) | ❌ (per-project) | ✅ (per-agent) | ✅ (per-profile, `users` command) |
+| **Auto memory** | ✅ (LLM extraction) | `MEMORY.md` (code insights) | ✅ (compaction) | ❌ (agent-explicit) |
+| **Human-readable backup** | ❌ | ✅ (markdown files) | ❌ (SQLite only) | ✅ (markdown files) |
+| **Git-trackable** | ❌ | ✅ | ❌ | ✅ |
+| **Setup complexity** | API key + config | Zero | Gateway + openclaw.json | `pipx install` + `init` |
+| **Target scale** | Enterprise / production | Project-scoped | Multi-agent system | Personal (1 user) |
 
 ---
 
@@ -163,17 +220,20 @@ Additionally, every memory is persisted as a human-readable Markdown file (`~/.k
 
 | Scenario | Best fit |
 |---|---|
-| Code assistant within a project | Claude Code (`CLAUDE.md`) — zero setup, project-scoped |
-| Multi-agent chatbot system | OpenClaw — built-in agent isolation, conversation compaction |
-| Personal long-term memory with recall | **Kioku Lite** — KG enables "who/what/when" queries across months of data |
+| Production app with many users | **Mem0** — managed infra, compliance, multi-tenant |
+| Code assistant within a project | **Claude Code** (`CLAUDE.md`) — zero setup, project-scoped |
+| Multi-agent chatbot system | **OpenClaw** — built-in agent isolation, conversation compaction |
+| Personal long-term memory, offline | **Kioku Lite** — local-first, KG for causal queries, no LLM cost |
 | Cross-domain entity tracking | **Kioku Lite** — graph connects entities across conversations |
+| Air-gapped / private environment | **Kioku Lite** — 100% on-device, no data leaves machine |
 
 ### Complementary use
 
-Kioku Lite is designed to **work alongside** both Claude Code and OpenClaw, not replace them:
+Kioku Lite is designed to **work alongside** the other tools, not replace them:
 
 - **Claude Code + Kioku Lite:** Claude Code provides project context (`CLAUDE.md`), Kioku Lite provides personal memory and KG across all projects.
 - **OpenClaw + Kioku Lite:** OpenClaw handles conversation management and agent routing, Kioku Lite adds structured long-term memory with entity tracking.
+- **Mem0 + Kioku Lite:** Mem0 handles a production multi-user service, Kioku Lite handles the developer's own personal agent memory locally.
 
 ---
 

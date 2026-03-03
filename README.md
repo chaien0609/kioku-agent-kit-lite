@@ -21,6 +21,15 @@
 
 Most agent memory systems store flat text or vectors. They can't answer *"Why was I stressed last month?"* because they don't track how events, emotions, and decisions connect. kioku-lite solves this with a Knowledge Graph on top of traditional search — running 100% local with no LLM calls.
 
+| System | Infrastructure | LLM required | Search | Knowledge Graph |
+|---|---|---|---|---|
+| **Mem0** | Cloud-managed | Yes (every write) | Vector + Graph | ✅ Managed |
+| **Claude Code** | Flat markdown files | No | Context window only | ❌ |
+| **OpenClaw** | SQLite per-agent | No | Semantic (embedding) | ❌ |
+| **kioku-lite** | Single SQLite file | Agent-driven, zero extra | Tri-hybrid (BM25 + vector + KG) | ✅ Agent-driven |
+
+> **vs Mem0:** Mem0 targets production apps — managed cloud infra, automatic LLM extraction on every write. kioku-lite targets personal use — fully local, fully offline, the agent is already an LLM so no extra call needed. Full comparison: [docs](https://phuc-nt.github.io/kioku-lite-landing/blog.html#memory-comparison)
+
 ## Features
 
 - **Tri-hybrid search** — BM25 (FTS5) + Vector (sqlite-vec) + Knowledge Graph
