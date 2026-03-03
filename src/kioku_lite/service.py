@@ -382,6 +382,14 @@ class KiokuLiteService:
                 return f"{y}-01-01", f"{y}-12-31"
         return None, None
 
+    # ── export ─────────────────────────────────────────────────────────────────
+
+    def get_graph_data(self) -> dict:
+        """Return all nodes and edges for graph export (D3 node-link format)."""
+        nodes = self.db.graph.get_all_nodes()
+        links = self.db.graph.get_all_edges()
+        return {"nodes": nodes, "links": links}
+
     # ── lifecycle ──────────────────────────────────────────────────────────────
 
     def close(self) -> None:

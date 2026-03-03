@@ -249,6 +249,56 @@ class GraphStore:
                     first_seen=row[3] or "", last_seen=row[4] or "",
                 )
 
+    # ── Export ─────────────────────────────────────────────────────────────────
+
+    def get_all_nodes(self) -> list[dict]:
+        """Return all nodes with metadata for graph export."""
+        cur = self.conn.cursor()
+        cur.execute(
+            """
+            SELECT n.name, n.type, n.mention_count, n.first_seen, n.last_seen,
+                   GROUP_CONCAT(a.alias, '|||') AS aliases
+            FROM kg_nodes n
+            LEFT JOIN kg_aliases a ON a.canonical = n.name COLLATE NOCASE
+            GROUP BY n.name
+            ORDER BY n.mention_count DESC
+            """
+        )
+        return [
+            {
+                "id": r[0],
+                "name": r[0],
+                "type": r[1] or "UNKNOWN",
+                "mentions": r[2] or 0,
+                "first_seen": r[3] or "",
+                "last_seen": r[4] or "",
+                "aliases": [x for x in (r[5] or "").split("|||") if x],
+            }
+            for r in cur.fetchall()
+        ]
+
+    def get_all_edges(self) -> list[dict]:
+        """Return all edges for graph export."""
+        cur = self.conn.cursor()
+        cur.execute(
+            """
+            SELECT source, target, rel_type, weight, evidence, event_time
+            FROM kg_edges
+            ORDER BY weight DESC
+            """
+        )
+        return [
+            {
+                "source": r[0],
+                "target": r[1],
+                "relation": r[2] or "",
+                "weight": r[3] or 0.5,
+                "evidence": r[4] or "",
+                "event_time": r[5] or "",
+            }
+            for r in cur.fetchall()
+        ]
+
     def find_path(self, source: str, target: str) -> GraphSearchResult:
         """BFS shortest path between two entities (undirected)."""
         cur = self.conn.cursor()

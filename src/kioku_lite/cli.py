@@ -1,16 +1,17 @@
 """Kioku Lite CLI — zero Docker, zero cloud LLM.
 
 Commands:
-  save        Save a memory. Returns content_hash for kg-index.
-  search      Tri-hybrid search (BM25 + Vector + Graph).
-  kg-index    Agent-provided entity/relationship indexing for a saved memory.
-  kg-alias    Register SAME_AS aliases for a canonical entity.
-  recall      Recall everything related to an entity.
-  connect     Explain connection between two entities.
-  entities    List top entities in the knowledge graph.
-  timeline    Chronological memory list.
-  setup       First-time setup (download embedding model, create config).
-  init        Generate CLAUDE.md + SKILL.md for Claude Code / Cursor.
+  save          Save a memory. Returns content_hash for kg-index.
+  search        Tri-hybrid search (BM25 + Vector + Graph).
+  kg-index      Agent-provided entity/relationship indexing for a saved memory.
+  kg-alias      Register SAME_AS aliases for a canonical entity.
+  recall        Recall everything related to an entity.
+  connect       Explain connection between two entities.
+  entities      List top entities in the knowledge graph.
+  timeline      Chronological memory list.
+  export-graph  Export knowledge graph as interactive HTML or JSON.
+  setup         First-time setup (download embedding model, create config).
+  init          Generate CLAUDE.md + SKILL.md for Claude Code / Cursor.
 """
 
 from __future__ import annotations
@@ -468,6 +469,77 @@ def install_profile(
     typer.echo("")
     typer.echo(f"Make sure you select the right profile with: kioku-lite users --use {profile_name}")
     typer.echo("")
+
+
+@app.command(name="export-graph")
+def export_graph(
+    output: Optional[str] = typer.Argument(
+        None, help="Output file path. Defaults to graph.html or graph.json."
+    ),
+    format_: str = typer.Option(
+        "html",
+        "--format",
+        "-f",
+        help="Export format: html (interactive, requires pyvis) or json (D3 node-link).",
+    ),
+) -> None:
+    """Export the knowledge graph as an interactive file.
+
+    \b
+    Formats:
+      html  Standalone interactive HTML (vis-network). Open in any browser.
+            Requires: pip install pyvis  (or pip install "kioku-lite[export]")
+      json  D3 node-link JSON. Import into any graph tool or web app.
+
+    \b
+    Examples:
+      kioku-lite export-graph                        # → graph.html
+      kioku-lite export-graph mygraph.html           # → mygraph.html
+      kioku-lite export-graph --format json          # → graph.json
+      kioku-lite export-graph report.json -f json    # → report.json
+    """
+    from kioku_lite.export_graph import export_html, export_json
+
+    fmt = format_.lower().strip()
+    if fmt not in ("html", "json"):
+        typer.echo(f"⚠️  Unknown format '{fmt}'. Choose 'html' or 'json'.", err=True)
+        raise typer.Exit(1)
+
+    # Resolve default output path
+    if output is None:
+        output = f"graph.{fmt}"
+
+    svc = _get_svc()
+    graph_data = svc.get_graph_data()
+
+    node_count = len(graph_data.get("nodes", []))
+    edge_count = len(graph_data.get("links", []))
+
+    if node_count == 0:
+        typer.echo(
+            "⚠️  No entities found in the knowledge graph.\n"
+            "   Save some memories and run 'kioku-lite kg-index' first.",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    typer.echo(f"Exporting {node_count} nodes, {edge_count} edges → {fmt.upper()} …")
+
+    try:
+        if fmt == "html":
+            out = export_html(graph_data, output)
+            typer.echo(f"✅ Graph exported: {out}")
+            typer.echo("   Open in your browser to explore interactively.")
+        else:
+            out = export_json(graph_data, output)
+            typer.echo(f"✅ Graph exported: {out}")
+            typer.echo("   Load into any D3-compatible tool or web app.")
+    except ImportError as exc:
+        typer.echo(f"⚠️  {exc}", err=True)
+        raise typer.Exit(1)
+    except ValueError as exc:
+        typer.echo(f"⚠️  {exc}", err=True)
+        raise typer.Exit(1)
 
 
 if __name__ == "__main__":
