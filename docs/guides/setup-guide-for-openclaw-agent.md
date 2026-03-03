@@ -81,44 +81,24 @@ OpenClaw uses a different file convention than the open standard. The developer 
 
 
 
-### 4b. Create `TOOLS.md` — reference SKILL files by path, do NOT copy content
+### 4b. Create `TOOLS.md` — from the bundled template
 
-Create `~/.openclaw/workspace-<name>/TOOLS.md` with the following structure:
+kioku-lite ships a ready-made TOOLS.md for each persona. The developer agent should **copy** it as the starting point:
 
-```markdown
-# TOOLS.md — Kioku Lite CLI
+```bash
+# The template lives inside the installed package:
+# kioku_lite/resources/openclaw/<persona>/TOOLS.md
 
-## Session Start — Run at the beginning of EVERY session
-
-Step 1: Verify active profile
-\`\`\`bash
-kioku-lite users
-\`\`\`
-- If `active_profile` is already `<AGENT_ID>` → proceed
-- If NOT → `kioku-lite users --use <AGENT_ID>`
-
-> ⚠️ Profile `<AGENT_ID>` is real user data. Never switch to `personal` or `test-*` during a live session.
-
-Step 2: Load context
-\`\`\`bash
-kioku-lite search "<UserName> profile background goals recent" --limit 10
-\`\`\`
-
----
-
-## CLI Reference
-
-Read the full CLI documentation from:
-- **Commands, search enrichment, decision tree:** `~/.agents/skills/kioku-lite/SKILL.md`
-- **Identity, KG schema (entity & relation types for this persona):** `~/.agents/skills/kioku-<name>/SKILL.md`
-
-> The KG schema in `kioku-<name>/SKILL.md` takes precedence over any generic types in the global skill.
+# Copy it to the workspace:
+cp "$(python3 -c "import kioku_lite; print(kioku_lite.__path__[0])")/resources/openclaw/<persona>/TOOLS.md" \
+   ~/.openclaw/workspace-<name>/TOOLS.md
 ```
 
-**Why reference by path instead of copy-pasting?**
-- Always up-to-date when `kioku-lite init --global` or `install-profile` is re-run on upgrade
-- Single source of truth — no drift between TOOLS.md and the actual SKILL files
-- OpenClaw agents can read files natively; referencing by path is equivalent
+Then replace these placeholders in the copied file:
+- `<BOT_ID>` → the workspace profile name (e.g. `my-companion`)
+- `<UserName>` → the user's display name
+
+> **Why inline content instead of path references?** OpenClaw agents read `TOOLS.md` at session start as their tool reference. They don't automatically follow file paths to read external docs. Inline content ensures the agent has everything it needs immediately.
 
 
 ---
