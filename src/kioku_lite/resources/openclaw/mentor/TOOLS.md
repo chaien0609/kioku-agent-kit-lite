@@ -26,14 +26,14 @@ kioku-lite search "<UserName> profile background goals recent work challenges" -
 
 | Command | When to use |
 |---|---|
-| `kioku-lite save "TEXT" --mood MOOD --tags "t1,t2" --event-time YYYY-MM-DD` | User shares new information |
-| `kioku-lite kg-index HASH --entities '[...]' --relationships '[...]'` | Immediately after every save |
+| `kioku-lite save "TEXT" --mood MOOD --event-time YYYY-MM-DD` | User shares new information |
+| `kioku-lite kg-index HASH --entities '[…]' --relationships '[…]' --event-time YYYY-MM-DD` | Immediately after every save |
 | `kioku-lite search "ENRICHED_QUERY" --entities "A,B" --limit 10` | User asks about something |
 | `kioku-lite recall "ENTITY" --hops 2 --limit 15` | Deep dive on one entity |
 | `kioku-lite connect "A" "B"` | Connection between two entities |
 | `kioku-lite timeline --from DATE --to DATE --limit 20` | Chronological view |
 | `kioku-lite entities --limit 50` | See entity vocabulary |
-| `kioku-lite kg-alias "CANONICAL" --aliases '["alias1","alias2"]'` | Register aliases |
+| `kioku-lite kg-alias "CANONICAL" --aliases '["alias1"]'` | Register aliases |
 
 Mood values: `happy` | `sad` | `excited` | `anxious` | `grateful` | `proud` | `reflective` | `neutral` | `work` | `curious`
 
@@ -47,40 +47,43 @@ Mood values: `happy` | `sad` | `excited` | `anxious` | `grateful` | `proud` | `r
 
 ---
 
-## kg-index — Entity Extraction Rules
+## kg-index — 3-Step Process
 
-You extract entities from text — the engine does NOT do this automatically.
-
+### Step 1: Disambiguate — check existing entities first
 ```bash
-kioku-lite kg-index <content_hash> \
-  --entities '[
-    {"name": "Alice", "type": "PERSON"},
-    {"name": "Project X", "type": "PROJECT"}
-  ]' \
-  --relationships '[
-    {"source": "Alice", "rel_type": "WORKS_ON", "target": "Project X", "evidence": "working on project X"}
-  ]'
+kioku-lite entities --limit 50
 ```
+Reuse existing canonical names. If `"Phúc"` exists (12 mentions), use it — not `"anh Phúc"`.
+For true aliases: `kioku-lite kg-alias "Phúc" --aliases '["anh Phúc"]'`
+
+### Step 2: Extract entities & relationships
 
 **Mentor persona schema — use these INSTEAD of generic types:**
 - Entity types: `PERSON` | `ORGANIZATION` | `PROJECT` | `EVENT` | `DECISION` | `LESSON_LEARNED` | `STRATEGY` | `CHALLENGE`
 - Relation types: `CAUSED_BY` | `RESOLVED_BY` | `RESULTED_IN` | `LED_TO_LESSON` | `APPLIED_STRATEGY` | `WORKS_FOR` | `PARTNERS_WITH`
 
-**Extraction rules:**
-- ✅ Use exact name form: `"Alice"` not `"my colleague Alice"`
-- ✅ Entity names in the user's original language — do NOT translate
+**Rules:**
+- ✅ Use short canonical name: `"Alice"` not `"my colleague Alice"`
+- ✅ Entity names in user's language — do NOT translate
+- ✅ `evidence` = **exact quote** from the saved text supporting the relationship
 - ❌ Skip generic words: `"I"`, `"we"`, `"they"`, `"team"`
-- ❌ Only add relationships explicitly stated in the text
-- ✅ No specific entities → skip kg-index
+- ❌ Only add relationships explicitly stated — do NOT infer
 
----
+### Step 3: Call kg-index with --event-time
 
-## Search Enrichment — Always Enrich Before Searching
+```bash
+kioku-lite kg-index <content_hash> \
+  --entities '[{"name":"Alice","type":"PERSON"},{"name":"Project X","type":"PROJECT"}]' \
+  --relationships '[{"source":"Alice","rel_type":"WORKS_ON","target":"Project X","evidence":"Alice leading Project X deliverables"}]' \
+  --event-time "2026-02-15"
+```
 
-Never pass raw user queries to search. Always enrich first:
-- Replace pronouns with real names
-- Add relevant domain/context keywords
-- Use `--entities` for KG-focused boost
+**`--event-time` is critical.** Parse relative dates to YYYY-MM-DD:
+- "hôm qua" → yesterday's date
+- "tuần trước" → last week
+- "năm 2019" → `2019-01-01`
+- "last quarter" → first day of last quarter
+- Today or unclear → omit (defaults to today)
 
 ---
 
@@ -96,6 +99,15 @@ Never pass raw user queries to search. Always enrich first:
 
 ---
 
+## Search Enrichment — Always Enrich Before Searching
+
+Never pass raw user queries to search. Always enrich first:
+- Replace pronouns with real entity names
+- Add relevant domain/context keywords
+- Use `--entities` for KG-focused boost
+
+---
+
 ## Decision Tree
 
 ```
@@ -103,7 +115,7 @@ Session start?
 └─ Check profile → load context with search
 
 User shares new info / "remember this":
-└─ Check splitting criteria → save (split if needed) → extract entities → kg-index each
+└─ Check splitting → save (split if needed) → disambiguate → extract → kg-index each (with --event-time!)
 
 User asks a question:
 └─ ENRICH query → search

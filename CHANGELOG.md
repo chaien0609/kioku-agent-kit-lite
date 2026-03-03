@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.22] — 2026-03-03
+
+### Changed
+- **Restructured SKILL.md** — clearer sections, less redundancy, same 11 sections but more substance
+- **kg-index now a 3-step process**: disambiguate (check existing entities) → extract → index
+- Added `--event-time` documentation to kg-index with relative date parsing guide
+- Added entity disambiguation guidance: check `kioku-lite entities` before extracting
+- Clarified `evidence` field: must be exact quote from saved text
+- Updated OpenClaw TOOLS.md templates (companion + mentor) with same improvements
+
 ## [0.1.21] — 2026-03-03
 
 ### Added
