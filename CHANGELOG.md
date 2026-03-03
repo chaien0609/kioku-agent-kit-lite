@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.23] — 2026-03-03
+
+### Fixed
+- **Search date filter now uses `event_time`** when available, falling back to `date`. Previously all temporal queries ("năm 2019") returned 0 results because memories were filtered by processing date (today) instead of event date.
+
+### Changed
+- `FTSResult` and `SearchResult` now carry `event_time` field through the search pipeline
+- Search output includes `event_time` in results JSON
+- SKILL.md: `--event-time` is now marked as REQUIRED on `save` (not just `kg-index`)
+
 ## [0.1.22] — 2026-03-03
 
 ### Changed

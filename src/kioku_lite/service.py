@@ -222,13 +222,19 @@ class KiokuLiteService:
 
         results = rrf_rerank(bm25_results, vec_results, kg_results, limit=limit)
 
-        # Date filter
+        # Date filter — prefer event_time (when it happened) over date (when saved)
         if date_from or date_to:
-            results = [
-                r for r in results
-                if not (date_from and r.date and r.date < date_from)
-                and not (date_to and r.date and r.date > date_to)
-            ]
+            def _match_date(r) -> bool:
+                # Use event_time if available, fallback to processing date
+                d = getattr(r, "event_time", None) or r.date
+                if not d:
+                    return True  # keep results with no date info
+                if date_from and d < date_from:
+                    return False
+                if date_to and d > date_to:
+                    return False
+                return True
+            results = [r for r in results if _match_date(r)]
 
         # Hydrate from SQLite via content_hash (Phase 7 pattern)
         hashes = list({r.content_hash for r in results if r.content_hash})
@@ -242,6 +248,7 @@ class KiokuLiteService:
                     "content": entry["text"],
                     "date": entry.get("date", r.date),
                     "mood": entry.get("mood", r.mood),
+                    "event_time": entry.get("event_time", "") or r.event_time,
                     "score": round(r.score, 4),
                     "source": r.source,
                     "content_hash": r.content_hash,
@@ -251,6 +258,7 @@ class KiokuLiteService:
                     "content": r.content,
                     "date": r.date,
                     "mood": r.mood,
+                    "event_time": r.event_time,
                     "score": round(r.score, 4),
                     "source": r.source,
                     "content_hash": r.content_hash or "",

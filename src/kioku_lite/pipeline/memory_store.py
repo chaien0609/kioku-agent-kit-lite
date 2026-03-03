@@ -87,7 +87,7 @@ class MemoryStore:
         try:
             cur.execute(
                 """
-                SELECT m.id, m.content, m.date, m.mood, m.timestamp, rank, m.content_hash
+                SELECT m.id, m.content, m.date, m.mood, m.timestamp, rank, m.content_hash, m.event_time
                 FROM memory_fts
                 JOIN memories m ON m.id = memory_fts.rowid
                 WHERE memory_fts MATCH ?
@@ -102,6 +102,7 @@ class MemoryStore:
             FTSResult(
                 rowid=r[0], content=r[1], date=r[2], mood=r[3],
                 timestamp=r[4], rank=abs(r[5]), content_hash=r[6],
+                event_time=r[7] or "",
             )
             for r in cur.fetchall()
         ]

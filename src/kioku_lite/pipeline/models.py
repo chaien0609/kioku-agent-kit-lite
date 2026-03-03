@@ -17,6 +17,7 @@ class FTSResult:
     timestamp: str
     rank: float
     content_hash: str = ""
+    event_time: str = ""
 
 
 # ── Knowledge Graph ─────────────────────────────────────────────────────────────

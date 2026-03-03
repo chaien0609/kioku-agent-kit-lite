@@ -17,6 +17,7 @@ class SearchResult:
     score: float
     source: str          # "bm25" | "vector" | "graph"
     content_hash: str = ""
+    event_time: str = ""
 
 
 def bm25_search(store: MemoryStore, query: str, limit: int = 20) -> list[SearchResult]:
@@ -29,6 +30,7 @@ def bm25_search(store: MemoryStore, query: str, limit: int = 20) -> list[SearchR
         SearchResult(
             content=r.content, date=r.date, mood=r.mood, timestamp=r.timestamp,
             score=r.rank / max_score, source="bm25", content_hash=r.content_hash,
+            event_time=getattr(r, "event_time", ""),
         )
         for r in raw
     ]

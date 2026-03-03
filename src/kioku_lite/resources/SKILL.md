@@ -108,7 +108,9 @@ kioku-lite save "TEXT" --mood MOOD --tags "tag1,tag2" --event-time "YYYY-MM-DD"
 
 **Rules:**
 - ✅ Preserve **full original text** — do not summarize or paraphrase
-- ✅ `--event-time` = when the event actually happened (not today). Parse relative dates: "hồi tháng 3 năm ngoái" → `2025-03-01`, "yesterday" → yesterday's date
+- ✅ **`--event-time` is REQUIRED** whenever the event is not today. Search filters use this field.
+  Parse relative dates: "hồi tháng 3 năm ngoái" → `2025-03-01`, "yesterday" → yesterday's date, "năm 2019" → `2019-01-01`. Omit only if the event is happening today or timing is truly unclear.
+- ✅ Use the **same `--event-time`** on both `save` AND `kg-index` for consistency.
 - ✅ Mood values: `happy` | `sad` | `excited` | `anxious` | `grateful` | `proud` | `reflective` | `neutral` | `work` | `curious`
 - ❌ Do not add editorial comments — save raw information
 
