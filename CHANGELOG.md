@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.28] — 2026-03-03
+
+### Fixed
+- **Graph search — multi-entity intersection (Task 2E)**: `graph_search()` with 2+ seed entities now returns only memories reachable from **all** seeds (intersection), instead of any seed (union). Prevents 2-hop traversal from expanding through the hub node indirectly. Falls back to union if no memories co-occur across all seeds.
+
+### Changed
+- **SKILL.md (Task 2H)**: Added `--entities` rules — do NOT include user's own name (auto-excluded by engine), do NOT pass a single entity (use `recall` instead). Added concrete examples contrasting correct vs incorrect usage.
+- **TOOLS.md** (companion + mentor profiles): Same rules added to the "Search Enrichment" section.
+
+### Added
+- 5 new tests in `TestMultiEntityIntersection`: intersection precision, union fallback, single seed, 3-entity, token-based no-entities
+
+## [0.1.27] — 2026-03-03
+
+### Fixed
+- **Graph search — hub node problem (Task 1A)**: `graph_search()` now detects the user's self-entity (highest `mention_count`) and excludes it from BFS seeds when other entities are present. Prevents hub node from flooding results with 90%+ of all memories. Fallback: hub is kept if it is the only entity passed.
+- **Graph search — adaptive hop limit (Task 1C)**: `traverse()` now uses `effective_hops = 1` for any entity with `degree > 15` (hub nodes), vs full `max_hops` for normal nodes. Defense-in-depth against supernode traversal explosion (e.g., direct `recall` on hub).
+
+### Added
+- `GraphStore.get_top_entity()` — returns entity name with highest `mention_count`
+- `GraphStore.get_degree(entity_name)` — counts total edges (in + out) for an entity
+- 19 new tests: `TestGetTopEntity`, `TestGetDegree`, `TestAdaptiveHopLimit` (in `test_graph_store.py`) and `TestGraphSearchBasic`, `TestSelfEntityExclusion` (new `test_graph_search.py`)
+
 ## [0.1.26] — 2026-03-03
 
 ### Fixed

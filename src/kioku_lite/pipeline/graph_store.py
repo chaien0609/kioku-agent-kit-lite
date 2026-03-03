@@ -159,15 +159,42 @@ class GraphStore:
 
     # ── Traversal ──────────────────────────────────────────────────────────────
 
+    def get_top_entity(self) -> str | None:
+        """Return the entity name with the highest mention_count (self/hub node)."""
+        cur = self.conn.cursor()
+        cur.execute("SELECT name FROM kg_nodes ORDER BY mention_count DESC LIMIT 1")
+        row = cur.fetchone()
+        return row[0] if row else None
+
+    def get_degree(self, entity_name: str) -> int:
+        """Count the number of edges connected to an entity (in + out)."""
+        cur = self.conn.cursor()
+        cur.execute(
+            "SELECT COUNT(*) FROM kg_edges "
+            "WHERE source = ? COLLATE NOCASE OR target = ? COLLATE NOCASE",
+            (entity_name, entity_name),
+        )
+        row = cur.fetchone()
+        return row[0] if row else 0
+
     def traverse(self, entity_name: str, max_hops: int = 2, limit: int = 20) -> GraphSearchResult:
-        """BFS traversal from seed entity, following SAME_AS aliases."""
+        """BFS traversal from seed entity, following SAME_AS aliases.
+
+        Uses adaptive hop limit (Task 1C): hub nodes with degree > 15 are
+        capped at 1 hop to avoid returning the majority of the DB.
+        """
         seeds = self._resolve_names(entity_name)
+
+        # Adaptive hop limit: high-degree (hub) nodes get only 1 hop
+        degree = self.get_degree(entity_name)
+        effective_hops = 1 if degree > 15 else max_hops
+
         nodes_map: dict[str, GraphNode] = {}
         edges: list[GraphEdge] = []
         seen: set[str] = set()
 
         for seed in seeds:
-            self._bfs(seed, max_hops, limit, nodes_map, edges, seen)
+            self._bfs(seed, effective_hops, limit, nodes_map, edges, seen)
 
         return GraphSearchResult(nodes=list(nodes_map.values()), edges=edges[:limit])
 

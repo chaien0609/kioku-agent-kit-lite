@@ -218,11 +218,19 @@ Parse relative time expressions to YYYY-MM-DD relative to today's date:
 
 **How:** Identify entity names from the user's question, match them against known entities (`kioku-lite entities`), and pass as `--entities`.
 
-```bash
-# Standard search — ALWAYS include --entities when applicable
-kioku-lite search "Alice Project X meeting outcomes" --entities "Alice,Project X" --limit 10
+**`--entities` rules (Task 2H):**
+- ✅ Pass 2–3 specific entities relevant to the topic (other people, places, organizations)
+- ❌ **Do NOT add the user's own name** — it connects to everything, dilutes results, and is auto-excluded by the engine
+- ❌ **Do NOT pass a single entity** — use `recall "Entity"` instead for a more focused graph traversal
 
-# Entity deep dive (graph traversal)
+```bash
+# Multi-topic: pass the relevant NON-user entities
+kioku-lite search "công việc dạo này" --entities "Techbase,Brain,Sato" --limit 15
+
+# ❌ Wrong: adding user name adds noise
+kioku-lite search "..." --entities "Phúc,Techbase,Brain,Sato"
+
+# Single entity → recall, not search
 kioku-lite recall "Alice" --hops 2 --limit 15
 
 # Connection between two entities

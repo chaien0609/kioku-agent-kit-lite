@@ -112,6 +112,11 @@ Never pass raw user queries to search. Always enrich first:
 > This activates the **graph search backend**. Without it, only vector+BM25 are used.
 > Extract entity names from the user's question, match against `kioku-lite entities`, and pass as `--entities "Name1,Name2"`.
 
+**`--entities` rules:**
+- ✅ Pass 2–3 specific entities relevant to the topic (other people, places, organizations)
+- ❌ **Do NOT add the user's own name** (e.g. the primary PERSON entity) — it connects to everything, dilutes results, and is auto-excluded by the engine
+- ❌ **Do NOT pass a single entity** — use `recall "Entity" --hops 2` instead for deeper, more focused results
+
 ---
 
 ## Decision Tree

@@ -392,7 +392,7 @@ wheels = [
 
 [[package]]
 name = "kioku-lite"
-version = "0.1.20"
+version = "0.1.27"
 source = { editable = "." }
 dependencies = [
     { name = "fastembed" },

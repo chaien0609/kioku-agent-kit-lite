@@ -1,6 +1,7 @@
 # Dev Plan: Hub Node Fix — Graph Search Precision
 
 **Created:** 2026-03-03  
+**Updated:** 2026-03-03  
 **Proposal:** [hub-node-problem.md](./2026-03-03-hub-node-problem.md)
 
 ---
@@ -8,6 +9,7 @@
 ## Phase 1 — v0.1.27 (immediate)
 
 > **Goal:** Graph search returns targeted results, not 92% of all memories.
+> **Status:** ✅ DONE (v0.1.27) — 173 tests passed
 
 ### Task 1A: Exclude self-entity from graph seeds
 
@@ -40,28 +42,29 @@ effective_hops = 1 if degree > 15 else min(max_hops, 2)
 ### Validation
 
 Replay 4 search queries from acceptance test #2:
-- [ ] Graph results < 100% coverage
-- [ ] Relevant memories still retrieved
-- [ ] Tests pass (pytest)
+- [x] Graph results < 100% coverage — Mẹ query: graph 4→3 ✅
+- [x] Relevant memories still retrieved — top results unchanged ✅
+- [x] Tests pass (pytest) — 173/173 passed ✅
 
 ---
 
-## Phase 2 — when KG > 100 nodes
+## Phase 2 — ✅ DONE (v0.1.27)
 
-### Task 2H: SKILL.md — guide agent tool selection
+### Task 2H: SKILL.md — guide agent tool selection ✅
 
-Add decision rule:
-```
-Single entity query ("Phong thế nào?") → recall (focused)
-Multi-topic query ("công việc dạo này?") → search --entities (broad)
-```
+Added rules to SKILL.md + companion/mentor TOOLS.md:
+- ❌ Do NOT add user's own name to `--entities`
+- ❌ Single entity → use `recall` instead
+- ✅ Pass 2-3 specific non-user entities
 
-### Task 2E: Multi-entity intersection
+### Task 2E: Multi-entity intersection ✅
 
 **File:** `src/kioku_lite/search/graph.py`
 
 When `len(entities) >= 2`: return memories connected to ALL entities (intersection).  
 Fallback to union if intersection is empty.
+
+**Result:** Works correctly. On current DB (36 mem), most multi-entity queries fallback to union because entity memories don't overlap. Will become more effective as KG grows.
 
 ---
 

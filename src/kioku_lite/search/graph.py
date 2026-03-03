@@ -57,22 +57,54 @@ def graph_search(
         reverse=True,
     )[:5]
 
-    seen_hashes: set[str] = set()
-    results: list[SearchResult] = []
+    # Task 1A: exclude self-entity (hub node) from seeds — it connects to
+    # everything and adds no signal. Only skip if other seeds are available.
+    self_entity = store.get_top_entity()
+    if self_entity:
+        filtered = [e for e in ranked_seeds if e.name.lower() != self_entity.lower()]
+        if filtered:  # fallback: keep all when self is the only seed
+            ranked_seeds = filtered
+
+    # Collect per-entity traversal results
+    # results_by_hash: dedup by source_hash (memory-backed edges)
+    # orphan_results:  edges without source_hash, always included via union
+    per_entity_hashes: list[set[str]] = []
+    results_by_hash: dict[str, SearchResult] = {}
+    orphan_keys: set[str] = set()
+    orphan_results: list[SearchResult] = []
 
     for entity in ranked_seeds:
         traversal = store.traverse(entity.name, max_hops=2, limit=limit)
+        entity_hashes: set[str] = set()
         for edge in traversal.edges:
-            key = edge.source_hash or edge.evidence
-            if key and key not in seen_hashes:
-                seen_hashes.add(key)
-                results.append(SearchResult(
-                    content=edge.evidence or "",
-                    date="", mood="", timestamp="",
-                    score=edge.weight,
-                    source="graph",
-                    content_hash=edge.source_hash,
-                ))
+            r = SearchResult(
+                content=edge.evidence or "",
+                date="", mood="", timestamp="",
+                score=edge.weight,
+                source="graph",
+                content_hash=edge.source_hash,
+            )
+            if edge.source_hash:
+                entity_hashes.add(edge.source_hash)
+                results_by_hash.setdefault(edge.source_hash, r)
+            else:
+                key = edge.evidence
+                if key and key not in orphan_keys:
+                    orphan_keys.add(key)
+                    orphan_results.append(r)
+        per_entity_hashes.append(entity_hashes)
+
+    # Task 2E: intersection for multi-seed queries.
+    # Only return memories reachable from ALL seeds (precision over recall).
+    # Falls back to union when no memory is co-reachable (prevents empty results).
+    if len(per_entity_hashes) >= 2:
+        common = set.intersection(*per_entity_hashes)
+        if common:
+            results = [r for h, r in results_by_hash.items() if h in common] + orphan_results
+        else:
+            results = list(results_by_hash.values()) + orphan_results
+    else:
+        results = list(results_by_hash.values()) + orphan_results
 
     results.sort(key=lambda r: r.score, reverse=True)
     return results[:limit]

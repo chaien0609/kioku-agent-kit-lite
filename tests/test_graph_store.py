@@ -263,3 +263,97 @@ class TestGetCanonicalEntities:
 
     def test_empty_graph(self, graph):
         assert graph.get_canonical_entities() == []
+
+
+# ── get_top_entity ─────────────────────────────────────────────────────────────
+
+class TestGetTopEntity:
+    def test_returns_highest_mention_count(self, graph):
+        _add_node(graph, "Hub")
+        _add_node(graph, "Hub")
+        _add_node(graph, "Hub")
+        _add_node(graph, "Minor")
+        assert graph.get_top_entity() == "Hub"
+
+    def test_empty_graph_returns_none(self, graph):
+        assert graph.get_top_entity() is None
+
+    def test_single_node(self, graph):
+        _add_node(graph, "Solo")
+        assert graph.get_top_entity() == "Solo"
+
+
+# ── get_degree ─────────────────────────────────────────────────────────────────
+
+class TestGetDegree:
+    def test_counts_outgoing_edges(self, graph):
+        _add_node(graph, "Hub")
+        for i in range(5):
+            _add_node(graph, f"Leaf{i}")
+            _add_edge(graph, "Hub", f"Leaf{i}", "KNOWS", h=f"h{i}")
+        assert graph.get_degree("Hub") == 5
+
+    def test_counts_incoming_edges(self, graph):
+        _add_node(graph, "Target")
+        for i in range(3):
+            _add_node(graph, f"Src{i}")
+            _add_edge(graph, f"Src{i}", "Target", "MENTIONS", h=f"h{i}")
+        assert graph.get_degree("Target") == 3
+
+    def test_counts_both_directions(self, graph):
+        _add_node(graph, "Center")
+        _add_node(graph, "Out")
+        _add_node(graph, "In")
+        _add_edge(graph, "Center", "Out", "KNOWS", h="h1")
+        _add_edge(graph, "In", "Center", "KNOWS", h="h2")
+        assert graph.get_degree("Center") == 2
+
+    def test_no_edges_returns_zero(self, graph):
+        _add_node(graph, "Isolated")
+        assert graph.get_degree("Isolated") == 0
+
+    def test_case_insensitive(self, graph):
+        _add_node(graph, "Phúc")
+        _add_node(graph, "TBV")
+        _add_edge(graph, "Phúc", "TBV", "WORKS_AT", h="h1")
+        assert graph.get_degree("phúc") == 1
+
+
+# ── adaptive hop limit (Task 1C) ───────────────────────────────────────────────
+
+class TestAdaptiveHopLimit:
+    def _build_hub(self, graph, hub_name: str, n_leaves: int) -> None:
+        """Create a hub node connected to n_leaves, each leaf connected to a grandchild."""
+        _add_node(graph, hub_name)
+        for i in range(n_leaves):
+            leaf = f"Leaf{i}"
+            grand = f"Grand{i}"
+            _add_node(graph, leaf)
+            _add_node(graph, grand)
+            _add_edge(graph, hub_name, leaf, "KNOWS", h=f"hl{i}")
+            _add_edge(graph, leaf, grand, "KNOWS", h=f"hg{i}")
+
+    def test_hub_node_gets_1_hop(self, graph):
+        """Node with degree > 15 should only traverse 1 hop, not reach grandchildren."""
+        self._build_hub(graph, "Hub", n_leaves=16)
+        result = graph.traverse("Hub", max_hops=2)
+        node_names = {n.name for n in result.nodes}
+        # Leaves should appear (1 hop), but grandchildren should NOT (2 hops blocked)
+        assert any(n.startswith("Leaf") for n in node_names)
+        assert not any(n.startswith("Grand") for n in node_names)
+
+    def test_normal_node_gets_full_hops(self, graph):
+        """Node with degree <= 15 should traverse the full max_hops."""
+        self._build_hub(graph, "Normal", n_leaves=5)
+        result = graph.traverse("Normal", max_hops=2)
+        node_names = {n.name for n in result.nodes}
+        # Both leaves (1 hop) and grandchildren (2 hops) should appear
+        assert any(n.startswith("Leaf") for n in node_names)
+        assert any(n.startswith("Grand") for n in node_names)
+
+    def test_boundary_at_15(self, graph):
+        """Node with exactly 15 edges uses full max_hops (threshold is > 15)."""
+        self._build_hub(graph, "Boundary", n_leaves=15)
+        result = graph.traverse("Boundary", max_hops=2)
+        node_names = {n.name for n in result.nodes}
+        assert any(n.startswith("Grand") for n in node_names)
