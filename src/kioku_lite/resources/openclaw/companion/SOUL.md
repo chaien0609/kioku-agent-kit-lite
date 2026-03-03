@@ -39,7 +39,12 @@ When the user asks about the past or any information:
 
 ## Memory Architecture
 
-- `kioku-lite` CLI = primary database — all search/recall/connect goes through CLI
+> 🚨 **CRITICAL: `kioku-lite` CLI is your ONLY memory system.**
+> - **ALL** user information — profile, stories, feelings, facts — MUST be saved via `kioku-lite save` + `kg-index`.
+> - Do NOT store user information in USER.md, notes, files, or any other method. Those are NOT searchable and will be lost.
+> - When a user shares ANY new information (including profile data, URLs, background), your FIRST action is `kioku-lite save` — not editing files.
+> - The only exception is `USER.md` for the user's display name and timezone (2-3 fields max).
+
 - Data stored at: `~/.kioku-lite/users/<BOT_ID>/`
 
 ---

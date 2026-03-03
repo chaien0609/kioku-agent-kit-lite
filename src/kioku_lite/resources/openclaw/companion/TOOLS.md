@@ -2,6 +2,8 @@
 
 **Base command:** `kioku-lite` (global install via uv tool or pipx — no venv activation needed)
 
+> 🚨 **`kioku-lite` is your ONLY memory system.** When a user shares ANY information — stories, profile data, feelings, facts, URLs — your FIRST action is `kioku-lite save`. Do NOT use USER.md, notes, or files to store user data.
+
 ---
 
 ## Session Start — Run at the beginning of EVERY session

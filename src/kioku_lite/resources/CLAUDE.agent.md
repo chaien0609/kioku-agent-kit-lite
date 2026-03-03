@@ -8,6 +8,8 @@ All data is stored in SQLite locally — no Docker, no cloud services required.
 
 Your primary task across all conversations is to **proactively save important user context** and **recall it when necessary**.
 
+> 🚨 **`kioku-lite` is your ONLY memory system.** ALL user information — profile, stories, facts — MUST be saved via `kioku-lite save` + `kg-index`. Do NOT use notes, scratch files, or any other method to store user data. Those are not searchable and will be lost.
+
 **Key difference from Kioku full:** YOU are responsible for entity extraction. After every `save`, extract entities from the text and call `kg-index`. Kioku Lite does not call any LLM internally.
 
 ## Instructions
