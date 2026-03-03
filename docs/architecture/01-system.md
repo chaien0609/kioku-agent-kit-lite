@@ -1,6 +1,6 @@
 # System Architecture — kioku-agent-kit-lite
 
-> Last updated: 2026-03-02 (v0.1.18)
+> Last updated: 2026-03-03 (v0.1.22)
 
 ## Overview
 
@@ -98,20 +98,25 @@ See [03-search.md](03-search.md) for full details.
 | 2c | GraphSearch | entity-linked memories |
 | 3 | RRF Reranker | fused, deduplicated top-N |
 
-## Data Flow: KG Index (Agent-Driven)
+## Data Flow: KG Index (Agent-Driven, 3-Step)
 
 See [02-write-save-kg-index.md](02-write-save-kg-index.md) for full details.
 
 ```
-Agent extracts from context:
-  entities     → [{"name": "Alice", "type": "PERSON"}, ...]
-  relationships → [{"source": "Alice", "rel_type": "WORKS_ON", "target": "Kioku"}]
+Step 1 — Disambiguate:
+  kioku-lite entities --limit 50
+  → Compare against existing canonical names, reuse matches
+
+Step 2 — Extract from context:
+  entities      → [{"name": "Alice", "type": "PERSON"}, ...]
+  relationships → [{"source": "Alice", "rel_type": "WORKS_ON", "target": "Kioku", "evidence": "..."}]
+  event_time    → parse relative dates to YYYY-MM-DD
+
+Step 3 — Index:
+  kioku-lite kg-index <hash> --entities '...' --relationships '...' --event-time YYYY-MM-DD
         ↓
-  kioku-lite kg-index <hash> --entities '...' --relationships '...'
-        ↓
-  GraphStore.upsert_entities() → kg_entities
-  GraphStore.upsert_relations() → kg_relations
-  GraphStore.add_alias()        → kg_aliases
+  GraphStore.upsert_node()  → kg_nodes
+  GraphStore.upsert_edge()  → kg_edges (with source_hash + event_time)
 ```
 
 ## Configuration
