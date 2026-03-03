@@ -85,6 +85,18 @@ Never pass raw user queries to search. Always enrich first:
 
 ---
 
+## Entry Splitting Strategy
+
+**SPLIT into multiple entries if ANY:**
+- ≥3 distinct topics | ≥10 entities | ≥2 time phases | >300 words + multiple topics
+
+**Keep as 1 entry if ALL:**
+- Single topic, <5 entities, single time point
+
+**How:** Group by phase → topic → emotion. Aim for 5–8 entities per entry. Use relationships to link entries.
+
+---
+
 ## Decision Tree
 
 ```
@@ -92,7 +104,7 @@ Session start?
 └─ Check profile → load context with search
 
 User shares new info / "remember this":
-└─ save → extract entities → kg-index
+└─ Check splitting criteria → save (split if needed) → extract entities → kg-index each
 
 User asks a question:
 └─ ENRICH query → search

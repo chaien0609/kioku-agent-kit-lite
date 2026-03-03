@@ -178,10 +178,33 @@ kioku-lite save "TEXT" --mood MOOD --tags "tag1,tag2" --event-time "YYYY-MM-DD"
 
 **Rules:**
 - ✅ Preserve **full original text** — do not summarize or paraphrase
-- ✅ Long text (>300 chars) or multiple topics → split into multiple saves
 - ✅ `--event-time` = when the event actually happened (not now)
 - ✅ Mood: `happy` | `sad` | `excited` | `anxious` | `grateful` | `proud` | `reflective` | `neutral` | `work` | `curious`
 - ❌ Do not add editorial comments — save raw information
+
+### Entry Splitting Strategy
+
+**SPLIT into multiple entries if ANY of these are true:**
+- ≥3 distinct topics (e.g. career + family + hobbies)
+- ≥10 entities would be needed in `kg-index`
+- ≥2 time phases with different contexts (e.g. "worked in Japan 5 years, then moved back")
+- \>300 words AND covers multiple topics
+
+**Keep as 1 entry if ALL of these are true:**
+- Single topic with single emotional arc
+- <5 entities total
+- Single time point or tight narrative
+
+**How to split:** Group by phase → topic → emotion. Each entry should have 5–8 focused entities.
+
+```
+❌ BAD: 1 mega-entry (1500 words, 28 entities, 14 topics)
+   → KG becomes tangled, search returns noise
+
+✅ GOOD: 14 focused entries (~100-150 words, 5-8 entities each)
+   → Clean KG, each entry is independently searchable
+   → Use relationships to LINK entries across topics
+```
 
 ---
 

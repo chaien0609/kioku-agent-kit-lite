@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.21] — 2026-03-03
+
+### Added
+- **Entry Splitting Strategy** in SKILL.md — quantifiable criteria for when agents should split large saves into multiple focused entries (≥3 topics, ≥10 entities, ≥2 time phases, >300 words + multiple topics)
+- Entry splitting rules added to OpenClaw TOOLS.md templates (companion + mentor profiles)
+
+### Changed
+- Decision tree updated: save step now includes splitting check before kg-index
+
 ## [0.1.18] — 2026-03-02
 
 ### Added
