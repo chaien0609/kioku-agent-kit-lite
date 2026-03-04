@@ -172,7 +172,7 @@ Three layers of protection were added:
 
 See [proposals/2026-03-03-hub-node-problem.md](../proposals/2026-03-03-hub-node-problem.md) for detailed analysis.
 
-## Comparison with kioku-agent-kit (full) / kioku-server
+## Comparison: kioku-lite vs kioku-server
 
 kioku-server (the planned enterprise version, inheriting core logic from kioku-lite) is designed for **enterprise and multi-tenant** cloud deployments.
 

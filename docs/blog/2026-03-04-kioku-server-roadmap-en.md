@@ -1,169 +1,30 @@
-# From SQLite to the Cloud: Kioku Architecture & the Road to kioku-server
+# From CLI to Server: Kioku Architecture & the Road to kioku-server
 
 *Published: 2026-03-04 · v0.1.28*
 
 Hey builders!
 
-A few days ago I published the first deep-dive on [Kioku Lite](https://phuc-nt.github.io/kioku-lite-landing/) — a zero-Docker, SQLite-everything personal memory engine for AI agents. Since then, two questions keep coming up:
-
-1. *"How does the graph search actually work under the hood?"*
-2. *"What about the enterprise/cloud version you mentioned?"*
-
-This post answers both — plus a detailed comparison with Anthropic's official MCP Memory Server, since a lot of people are using that as a baseline reference.
+This post covers two things that came up repeatedly after the [kioku-lite intro](https://phuc-nt.github.io/kioku-lite-landing/blog.html#kioku-intro): how the architecture works in practice, and where the project is heading with kioku-server. Plus a comparison with Anthropic's official MCP Memory Server.
 
 ---
 
-## Part 1 — kioku-lite: Architecture Deep Dive
+## Part 1 — kioku-lite in Brief
 
-### The core bet: SQLite is enough (for personal scale)
+kioku-lite stores everything in a **single SQLite file** — no Docker, no external servers. The interface is a **CLI + SKILL.md**: any agent that can run shell commands reads the skill file and gains instant memory capabilities.
 
-kioku-lite's entire philosophy is *"do more with less"*. Instead of spinning up ChromaDB, FalkorDB, and an Ollama server, everything lives in a **single `.db` file**:
+The core is a **tri-hybrid search** pipeline fusing three signals via RRF (Reciprocal Rank Fusion):
 
-```
-~/.kioku-lite/users/<profile>/
-├── data/kioku.db          ← SQLite: FTS5 + sqlite-vec + Knowledge Graph
-└── memory/YYYY-MM/        ← Markdown backup (human-readable, git-trackable)
-    └── <content_hash>.md
-```
-
-Three storage engines, one file:
-
-| Engine | SQLite extension | Purpose |
+| Signal | Tech | Finds |
 |---|---|---|
-| FTS5 | Built-in | BM25 full-text keyword search |
-| sqlite-vec | Loadable extension | 1024-dim vector ANN search |
-| GraphStore | Plain SQL tables | Entity-relationship BFS traversal |
+| BM25 | SQLite FTS5 | Exact keywords, names, dates |
+| Vector | sqlite-vec + FastEmbed ONNX | Semantically similar memories |
+| Knowledge Graph | SQLite BFS | Entity-linked memories, causal chains |
 
-### Interface: CLI + SKILL.md
+Writes use a two-step agent protocol: `save` (text → SHA256 hash + embedding + FTS5 row) then `kg-index` (agent extracts entities → GraphStore). **No built-in LLM** — the calling agent is already an LLM.
 
-The interface layer is a **Typer CLI** (`kioku-lite`) plus a `SKILL.md` file that teaches any compatible agent how to use it. No SDK required — if your agent can run shell commands, it can use kioku-lite.
+Graph search improvements in v0.1.27–0.1.28: self-entity exclusion (hub node filtered from BFS seeds), adaptive hop limit (degree > 15 → 1 hop), and multi-entity intersection (results reachable from *all* seed entities).
 
-```
-Agent (Claude Code / Cursor / Windsurf / OpenClaw)
-    │
-    ├─ kioku-lite save "..."            → store memory
-    ├─ kioku-lite kg-index <hash>       → index entities into KG
-    ├─ kioku-lite search "..." --entities "A,B"
-    ├─ kioku-lite recall "Entity"
-    └─ kioku-lite connect "A" "B"
-```
-
-This CLI-first design makes kioku-lite **agent-agnostic**. Claude, GPT, Gemini, local models — any agent that can read a SKILL.md file and call shell commands works.
-
-### Architecture overview
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│                     INTERFACE LAYER                          │
-│   cli.py (Typer) — 12 commands: save, search, kg-index,     │
-│   recall, connect, entities, timeline, users, init, ...      │
-└──────────────────────────┬───────────────────────────────────┘
-                           ▼
-┌──────────────────────────────────────────────────────────────┐
-│             KiokuLiteService  (service.py)                   │
-│   save_memory() │ search() │ kg_index() │ recall()           │
-└──────┬───────────────────┬─────────────────────┬─────────────┘
-       │                   │                     │
-       ▼                   ▼                     ▼
- MarkdownStore         Embedder              KiokuDB
- ~/memory/*.md        FastEmbed             (single .db)
- (human backup)       ONNX local    ┌────────────────────────┐
-                                    │  SQLiteStore           │
-                                    │  ├── memories (FTS5)   │
-                                    │  └── memory_vec        │
-                                    │      (sqlite-vec)      │
-                                    │                        │
-                                    │  GraphStore            │
-                                    │  ├── kg_nodes          │
-                                    │  ├── kg_edges          │
-                                    │  └── kg_aliases        │
-                                    └────────────────────────┘
-```
-
-### Write pipeline: save → kg-index
-
-Every memory follows a two-step write protocol — both steps called by the agent:
-
-```
-Step 1: kioku-lite save "text" --mood MOOD --event-time YYYY-MM-DD
-        │
-        ├─ SHA256(text) → content_hash  (universal dedup key)
-        ├─ FastEmbed.embed("passage: " + text) → 1024-dim vector
-        ├─ MarkdownStore → ~/memory/YYYY-MM/<hash>.md
-        ├─ SQLiteStore.upsert_memory() → FTS5 (BM25-indexed)
-        └─ SQLiteStore.upsert_vector() → sqlite-vec
-
-Step 2: kioku-lite kg-index <hash> --entities '[...]' --relationships '[...]'
-        │
-        ├─ Agent extracts entities from context (no extra LLM call!)
-        ├─ GraphStore.upsert_node() → kg_nodes (mention_count++)
-        └─ GraphStore.upsert_edge() → kg_edges (with source_hash + event_time)
-```
-
-**Key design choice**: kioku-lite never calls an LLM internally. The calling agent *is* the LLM — it extracts entities in its own reasoning step, then passes them to `kg-index`. Zero extra cost. Zero extra latency. Zero vendor lock-in.
-
-### Search pipeline: tri-hybrid → RRF
-
-```
-kioku-lite search "query" --entities "Mẹ,Sato"
-         │
-         ▼
-1. FastEmbed.embed("query: " + text) → 1024-dim query vector
-         │
-         ├─────────────────────────────────────┐
-         ▼                   ▼                 ▼
-  BM25 Search        Semantic Search     Graph Search
-  (FTS5 MATCH)       (sqlite-vec ANN)    (BFS traversal)
-  top-K by BM25      top-K by cosine     entity-linked
-  keyword hits       similarity          memories
-         │                   │                 │
-         └─────────────────────────────────────┘
-                             ▼
-              Reciprocal Rank Fusion (RRF)
-              k=60 constant, fused scores
-                             │
-                             ▼
-              Deduplicated top-N results
-              (keyed by content_hash)
-```
-
-Three signals, fused without training a ranker:
-
-| Signal | What it catches |
-|---|---|
-| BM25 | Exact names, dates, keywords (Vietnamese/multilingual safe) |
-| Vector | Semantic similarity — "stressed" matches "anxious" |
-| Graph | Entity-linked memories — all edges connected to "Mẹ" |
-
-### Graph search: the hub node problem (solved in v0.1.27–0.1.28)
-
-In personal KGs, the user's own entity (e.g. "Phúc") appears in almost every memory. With 30+ edges, traversing from it returns 90%+ of all memories — no signal.
-
-We solved this in three layers:
-
-**Task 1A — Self-entity exclusion (v0.1.27)**
-```python
-# Detect the hub: entity with highest mention_count
-self_entity = store.get_top_entity()  # → "Phúc" (33 mentions)
-
-# If other seeds exist, exclude the hub from traversal
-if self_entity and other_seeds_exist:
-    seeds = [e for e in seeds if e.name.lower() != self_entity.lower()]
-```
-
-**Task 1C — Adaptive hop limit (v0.1.27)**
-```python
-degree = store.get_degree(entity_name)
-effective_hops = 1 if degree > 15 else max_hops  # hub → 1 hop, normal → 2
-```
-
-**Task 2E — Multi-entity intersection (v0.1.28)**
-```
-When 2+ seeds: return memories reachable from ALL seeds (intersection)
-Fallback to union if intersection is empty
-```
-
-Result: searching `--entities "Mẹ,Sato"` now returns memories specifically about Mẹ *and* Sato together — not 92% of all memories.
+*→ Full details: [System Architecture](https://phuc-nt.github.io/kioku-lite-landing/blog.html#system-architecture) · [Write Pipeline](https://phuc-nt.github.io/kioku-lite-landing/blog.html#write-save-kg-index) · [Search Architecture](https://phuc-nt.github.io/kioku-lite-landing/blog.html#search-architecture)*
 
 ---
 

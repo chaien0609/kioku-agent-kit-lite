@@ -141,11 +141,11 @@ kioku-liteには**2つのビルトインペルソナ**が付属：
 
 詳細は [Kioku Lite Homepage](https://phuc-nt.github.io/kioku-lite-landing/) をご覧ください。
 
-## Kioku Lite vs Kioku Full
+## kioku-lite vs kioku-server
 
 **kioku-lite** はまず個人ユーザー向けに公開。`pipx` で素早いセットアップ、Docker不要、APIキー不要、ChromaDB/FalkorDBなどの外部データベース不要。パーソナルマシンのバックグラウンドでスムーズに動作します。
 
-一方、専用のグラフ/ベクトルデータベースとマルチテナントエンタープライズサポートを備えた **kioku-full** は現在開発中です。インフラ規模という点では、kioku-fullはMem0が提供するものに近づきますが、エージェント駆動（内蔵LLM抽出なし）とtri-hybridサーチという核心的な差別化要素は維持し続けます。
+一方、専用のグラフ/ベクトルデータベースとマルチテナントエンタープライズサポートを備えた **kioku-server** は現在開発中です。インフラ規模という点では、kioku-serverはMem0が提供するものに近づきますが、エージェント駆動（内蔵LLM抽出なし）とtri-hybridサーチという核心的な差別化要素は維持し続けます。
 
 ## おわりに
 

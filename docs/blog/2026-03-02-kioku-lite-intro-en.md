@@ -145,7 +145,7 @@ Full details at [Kioku Lite Homepage](https://phuc-nt.github.io/kioku-lite-landi
 
 **kioku-lite** ships first, targeting Personal Users. Setup is fast via `pipx`, no Docker, no API keys, no external databases like ChromaDB/FalkorDB. Runs silently in the background on your personal machine.
 
-Meanwhile, **kioku-full** with dedicated graph and vector databases, multi-tenant Enterprise support, is still under active development. In terms of infrastructure scale, kioku-full will be closer to what Mem0 offers — but it will remain agent-driven (no built-in LLM extraction) and keep the tri-hybrid search model as its core differentiator.
+Meanwhile, **kioku-server** with dedicated graph and vector databases, multi-tenant Enterprise support, is still under active development. In terms of infrastructure scale, kioku-server will be closer to what Mem0 offers — but it will remain agent-driven (no built-in LLM extraction) and keep the tri-hybrid search model as its core differentiator.
 
 ## Closing
 

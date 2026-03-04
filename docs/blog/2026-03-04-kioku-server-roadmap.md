@@ -1,169 +1,30 @@
-# Từ SQLite lên Cloud: Kiến trúc Kioku và lộ trình kioku-server
+# Từ CLI tới Server: Kiến trúc Kioku và lộ trình kioku-server
 
 *Xuất bản: 2026-03-04 · v0.1.28*
 
 Xin chào các bạn!
 
-Vài ngày trước tôi đã chia sẻ [Kioku Lite](https://phuc-nt.github.io/kioku-lite-landing/) — bộ nhớ cá nhân cho AI Agent, chạy hoàn toàn local, không Docker, toàn bộ dữ liệu trong SQLite. Sau khi đăng, có hai câu hỏi xuất hiện nhiều nhất:
-
-1. *"Graph search hoạt động chi tiết như thế nào?"*
-2. *"Bản enterprise/cloud mà bạn đề cập sẽ trông như thế nào?"*
-
-Bài viết này trả lời cả hai — cộng thêm so sánh chi tiết với MCP Memory Server chính thức của Anthropic, vì nhiều người đang dùng đó làm baseline để tham chiếu.
+Bài viết này trả lời hai câu hỏi hay gặp sau [bài giới thiệu kioku-lite](https://phuc-nt.github.io/kioku-lite-landing/blog.html#kioku-intro-vn): kiến trúc hoạt động như thế nào trong thực tế, và dự án đang hướng đến đâu với kioku-server. Cộng thêm so sánh với MCP Memory Server chính thức của Anthropic.
 
 ---
 
-## Phần 1 — kioku-lite: Kiến trúc chi tiết
+## Phần 1 — kioku-lite tóm tắt
 
-### Triết lý cốt lõi: SQLite là đủ (ở quy mô cá nhân)
+kioku-lite lưu trữ mọi thứ trong **một file SQLite duy nhất** — không Docker, không server ngoài. Giao diện là **CLI + SKILL.md**: bất kỳ agent nào chạy được shell command đều đọc được skill file và có memory ngay lập tức.
 
-Toàn bộ triết lý của kioku-lite là *"làm nhiều hơn với ít hơn"*. Thay vì chạy ChromaDB, FalkorDB, và Ollama server, mọi thứ đều nằm trong **một file `.db` duy nhất**:
+Cốt lõi là **tri-hybrid search** kết hợp ba tín hiệu qua RRF (Reciprocal Rank Fusion):
 
-```
-~/.kioku-lite/users/<profile>/
-├── data/kioku.db          ← SQLite: FTS5 + sqlite-vec + Knowledge Graph
-└── memory/YYYY-MM/        ← Backup Markdown (đọc được, theo dõi được qua git)
-    └── <content_hash>.md
-```
-
-Ba engine lưu trữ, một file:
-
-| Engine | Extension SQLite | Mục đích |
+| Tín hiệu | Công nghệ | Tìm được gì |
 |---|---|---|
-| FTS5 | Built-in | Tìm kiếm từ khóa BM25 |
-| sqlite-vec | Loadable extension | Vector ANN 1024 chiều |
-| GraphStore | Bảng SQL thông thường | BFS traversal Entity-Relationship |
+| BM25 | SQLite FTS5 | Từ khóa chính xác, tên, ngày |
+| Vector | sqlite-vec + FastEmbed ONNX | Memories tương tự ngữ nghĩa |
+| Knowledge Graph | SQLite BFS | Memories liên kết entity, chuỗi nhân quả |
 
-### Interface: CLI + SKILL.md
+Ghi dữ liệu theo giao thức hai bước do agent tự gọi: `save` (text → SHA256 hash + embedding + FTS5) rồi `kg-index` (agent extract entities → GraphStore). **Không có LLM nội bộ** — agent đang gọi chính là LLM.
 
-Lớp giao diện là **Typer CLI** (`kioku-lite`) cộng với file `SKILL.md` dạy bất kỳ agent nào cách sử dụng. Không cần SDK — nếu agent có thể chạy shell command, nó có thể dùng kioku-lite.
+Cải tiến graph search v0.1.27–0.1.28: loại self-entity khỏi BFS seeds (hub node), adaptive hop limit (degree > 15 → 1 hop), và multi-entity intersection (chỉ trả về memories có thể đến từ *tất cả* seed entities).
 
-```
-Agent (Claude Code / Cursor / Windsurf / OpenClaw)
-    │
-    ├─ kioku-lite save "..."            → lưu memory
-    ├─ kioku-lite kg-index <hash>       → index entities vào KG
-    ├─ kioku-lite search "..." --entities "A,B"
-    ├─ kioku-lite recall "Entity"
-    └─ kioku-lite connect "A" "B"
-```
-
-Thiết kế CLI-first này khiến kioku-lite **agnostic với mọi agent**: Claude, GPT, Gemini, model local — bất kỳ agent nào đọc được SKILL.md và gọi được shell command đều hoạt động.
-
-### Tổng quan kiến trúc
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│                     INTERFACE LAYER                          │
-│   cli.py (Typer) — 12 lệnh: save, search, kg-index,         │
-│   recall, connect, entities, timeline, users, init, ...      │
-└──────────────────────────┬───────────────────────────────────┘
-                           ▼
-┌──────────────────────────────────────────────────────────────┐
-│             KiokuLiteService  (service.py)                   │
-│   save_memory() │ search() │ kg_index() │ recall()           │
-└──────┬───────────────────┬─────────────────────┬─────────────┘
-       │                   │                     │
-       ▼                   ▼                     ▼
- MarkdownStore         Embedder              KiokuDB
- ~/memory/*.md        FastEmbed             (single .db)
- (backup con người)   ONNX local    ┌────────────────────────┐
-                                    │  SQLiteStore           │
-                                    │  ├── memories (FTS5)   │
-                                    │  └── memory_vec        │
-                                    │      (sqlite-vec)      │
-                                    │                        │
-                                    │  GraphStore            │
-                                    │  ├── kg_nodes          │
-                                    │  ├── kg_edges          │
-                                    │  └── kg_aliases        │
-                                    └────────────────────────┘
-```
-
-### Write pipeline: save → kg-index
-
-Mỗi memory tuân theo giao thức ghi hai bước — cả hai bước đều do agent gọi:
-
-```
-Bước 1: kioku-lite save "text" --mood MOOD --event-time YYYY-MM-DD
-        │
-        ├─ SHA256(text) → content_hash  (khóa dedup toàn cục)
-        ├─ FastEmbed.embed("passage: " + text) → vector 1024 chiều
-        ├─ MarkdownStore → ~/memory/YYYY-MM/<hash>.md
-        ├─ SQLiteStore.upsert_memory() → FTS5 (index BM25)
-        └─ SQLiteStore.upsert_vector() → sqlite-vec
-
-Bước 2: kioku-lite kg-index <hash> --entities '[...]' --relationships '[...]'
-        │
-        ├─ Agent tự extract entities từ context (không gọi thêm LLM!)
-        ├─ GraphStore.upsert_node() → kg_nodes (mention_count++)
-        └─ GraphStore.upsert_edge() → kg_edges (với source_hash + event_time)
-```
-
-**Quyết định thiết kế quan trọng**: kioku-lite không bao giờ gọi LLM nội bộ. Agent đang gọi kioku-lite *chính là* LLM — nó extract entities trong bước reasoning của mình, rồi truyền vào `kg-index`. Không chi phí thêm. Không latency thêm. Không bị lock vào vendor.
-
-### Search pipeline: tri-hybrid → RRF
-
-```
-kioku-lite search "query" --entities "Mẹ,Sato"
-         │
-         ▼
-1. FastEmbed.embed("query: " + text) → vector 1024 chiều
-         │
-         ├─────────────────────────────────────┐
-         ▼                   ▼                 ▼
-  BM25 Search        Semantic Search     Graph Search
-  (FTS5 MATCH)       (sqlite-vec ANN)    (BFS traversal)
-  top-K theo BM25    top-K theo cosine   memories liên kết
-  keyword hits       similarity          với entities
-         │                   │                 │
-         └─────────────────────────────────────┘
-                             ▼
-              Reciprocal Rank Fusion (RRF)
-              hằng số k=60, fused scores
-                             │
-                             ▼
-              Top-N kết quả đã dedup
-              (key bởi content_hash)
-```
-
-Ba tín hiệu, kết hợp mà không cần train ranker:
-
-| Tín hiệu | Bắt được gì |
-|---|---|
-| BM25 | Tên chính xác, ngày tháng, từ khóa (an toàn với tiếng Việt/đa ngôn ngữ) |
-| Vector | Semantic similarity — "căng thẳng" khớp với "lo lắng" |
-| Graph | Memories liên kết với entity — tất cả edges kết nối với "Mẹ" |
-
-### Graph search: bài toán hub node (đã giải trong v0.1.27–0.1.28)
-
-Trong personal KG, entity của chính người dùng (ví dụ "Phúc") xuất hiện trong gần như mọi memory. Với 30+ edges, traverse từ entity này trả về 90%+ tổng số memory — không có signal.
-
-Chúng tôi đã giải quyết theo ba lớp:
-
-**Task 1A — Loại self-entity (v0.1.27)**
-```python
-# Phát hiện hub: entity có mention_count cao nhất
-self_entity = store.get_top_entity()  # → "Phúc" (33 lần đề cập)
-
-# Nếu có seed khác, loại hub khỏi traversal
-if self_entity and có_seed_khác:
-    seeds = [e for e in seeds if e.name.lower() != self_entity.lower()]
-```
-
-**Task 1C — Adaptive hop limit (v0.1.27)**
-```python
-degree = store.get_degree(entity_name)
-effective_hops = 1 if degree > 15 else max_hops  # hub → 1 hop, thường → 2
-```
-
-**Task 2E — Multi-entity intersection (v0.1.28)**
-```
-Khi 2+ seeds: trả về memories có thể đến được từ TẤT CẢ seeds (intersection)
-Fallback sang union nếu intersection rỗng
-```
-
-Kết quả: tìm kiếm `--entities "Mẹ,Sato"` giờ trả về memories về Mẹ *và* Sato cùng nhau — không phải 92% tổng số memories.
+*→ Chi tiết đầy đủ: [System Architecture](https://phuc-nt.github.io/kioku-lite-landing/blog.html#system-architecture) · [Write Pipeline](https://phuc-nt.github.io/kioku-lite-landing/blog.html#write-save-kg-index) · [Search Architecture](https://phuc-nt.github.io/kioku-lite-landing/blog.html#search-architecture)*
 
 ---
 

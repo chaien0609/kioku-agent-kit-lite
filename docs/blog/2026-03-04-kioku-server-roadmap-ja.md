@@ -1,169 +1,30 @@
-# SQLiteからクラウドへ：Kiokuのアーキテクチャとkioku-serverへのロードマップ
+# CLIからサーバーへ：Kiokuのアーキテクチャとkioku-serverへのロードマップ
 
 *公開日: 2026-03-04 · v0.1.28*
 
 こんにちは、ビルダーの皆さん！
 
-数日前に [Kioku Lite](https://phuc-nt.github.io/kioku-lite-landing/) を紹介しました — AIエージェント向けのゼロDocker・SQLite完結型パーソナルメモリエンジンです。その後、2つの質問をよくいただきます：
-
-1. *「グラフ検索の内部はどう動いているの？」*
-2. *「エンタープライズ/クラウド版はどんな形になるの？」*
-
-この記事では両方に答えます — さらに、Anthropic公式のMCP Memory Serverとの詳細な比較も含めます。多くの人がそれをベースラインとして参照しているためです。
+この記事は[kioku-lite紹介記事](https://phuc-nt.github.io/kioku-lite-landing/blog.html#kioku-intro-ja)の後によくいただく2つの質問に答えます：アーキテクチャが実際にどう動くか、そしてkioku-serverでプロジェクトがどこへ向かっているか。さらにAnthropicのMCP Memory Serverとの比較も含めます。
 
 ---
 
-## パート1 — kioku-lite：アーキテクチャの詳細
+## パート1 — kioku-liteの概要
 
-### コアの考え方：SQLiteで十分（個人規模では）
+kioku-liteはすべてを **単一のSQLiteファイル** に保存します — Dockerなし、外部サーバーなし。インターフェースは **CLI + SKILL.md**：シェルコマンドを実行できるエージェントならskillファイルを読み込んですぐにメモリ機能を使えます。
 
-kioku-liteの哲学は *「少ないリソースでより多くを実現する」* です。ChromaDB、FalkorDB、Ollamaサーバーを立ち上げる代わりに、すべてが **単一の`.db`ファイル** に収まります：
+コアは **トライハイブリッド検索** — 3つのシグナルをRRF（Reciprocal Rank Fusion）で融合します：
 
-```
-~/.kioku-lite/users/<profile>/
-├── data/kioku.db          ← SQLite: FTS5 + sqlite-vec + Knowledge Graph
-└── memory/YYYY-MM/        ← Markdownバックアップ（人間が読める、git追跡可能）
-    └── <content_hash>.md
-```
-
-3つのストレージエンジン、1つのファイル：
-
-| エンジン | SQLite拡張 | 目的 |
+| シグナル | 技術 | 発見できるもの |
 |---|---|---|
-| FTS5 | 組み込み | BM25全文キーワード検索 |
-| sqlite-vec | ロード可能拡張 | 1024次元ベクターANN検索 |
-| GraphStore | 通常のSQLテーブル | エンティティ-関係BFSトラバーサル |
+| BM25 | SQLite FTS5 | 正確なキーワード、名前、日付 |
+| Vector | sqlite-vec + FastEmbed ONNX | 意味的に類似したメモリ |
+| Knowledge Graph | SQLite BFS | エンティティ連結メモリ、因果チェーン |
 
-### インターフェース：CLI + SKILL.md
+書き込みはエージェントが自ら呼び出す2ステッププロトコル：`save`（テキスト → SHA256ハッシュ + 埋め込み + FTS5）→ `kg-index`（エージェントがエンティティを抽出 → GraphStore）。**内蔵LLMなし** — 呼び出しているエージェント自身がLLMです。
 
-インターフェース層は **Typer CLI**（`kioku-lite`）と、任意のエージェントに使い方を教える`SKILL.md`ファイルです。SDKは不要 — シェルコマンドを実行できるエージェントならkioku-liteを使えます。
+v0.1.27–0.1.28のグラフ検索改善：セルフエンティティ除外（BFSシードからハブノードを除外）、適応ホップ制限（degree > 15 → 1ホップ）、マルチエンティティ交差（*すべての*シードエンティティから到達可能なメモリのみ返す）。
 
-```
-エージェント (Claude Code / Cursor / Windsurf / OpenClaw)
-    │
-    ├─ kioku-lite save "..."            → メモリを保存
-    ├─ kioku-lite kg-index <hash>       → エンティティをKGにインデックス
-    ├─ kioku-lite search "..." --entities "A,B"
-    ├─ kioku-lite recall "Entity"
-    └─ kioku-lite connect "A" "B"
-```
-
-このCLIファーストの設計により、kioku-liteは **エージェント非依存** になります。Claude、GPT、Gemini、ローカルモデル — SKILL.mdを読んでシェルコマンドを呼べるエージェントなら何でも動作します。
-
-### アーキテクチャ概観
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│                     インターフェース層                        │
-│   cli.py (Typer) — 12コマンド: save, search, kg-index,      │
-│   recall, connect, entities, timeline, users, init, ...      │
-└──────────────────────────┬───────────────────────────────────┘
-                           ▼
-┌──────────────────────────────────────────────────────────────┐
-│             KiokuLiteService  (service.py)                   │
-│   save_memory() │ search() │ kg_index() │ recall()           │
-└──────┬───────────────────┬─────────────────────┬─────────────┘
-       │                   │                     │
-       ▼                   ▼                     ▼
- MarkdownStore         Embedder              KiokuDB
- ~/memory/*.md        FastEmbed             (single .db)
- (人間用バックアップ)  ONNX local    ┌────────────────────────┐
-                                    │  SQLiteStore           │
-                                    │  ├── memories (FTS5)   │
-                                    │  └── memory_vec        │
-                                    │      (sqlite-vec)      │
-                                    │                        │
-                                    │  GraphStore            │
-                                    │  ├── kg_nodes          │
-                                    │  ├── kg_edges          │
-                                    │  └── kg_aliases        │
-                                    └────────────────────────┘
-```
-
-### 書き込みパイプライン：save → kg-index
-
-すべてのメモリは2ステップの書き込みプロトコルに従います — どちらもエージェントが呼び出します：
-
-```
-ステップ1: kioku-lite save "text" --mood MOOD --event-time YYYY-MM-DD
-        │
-        ├─ SHA256(text) → content_hash  (ユニバーサル重複排除キー)
-        ├─ FastEmbed.embed("passage: " + text) → 1024次元ベクター
-        ├─ MarkdownStore → ~/memory/YYYY-MM/<hash>.md
-        ├─ SQLiteStore.upsert_memory() → FTS5 (BM25インデックス)
-        └─ SQLiteStore.upsert_vector() → sqlite-vec
-
-ステップ2: kioku-lite kg-index <hash> --entities '[...]' --relationships '[...]'
-        │
-        ├─ エージェントがコンテキストからエンティティを抽出（追加LLM呼び出しなし！）
-        ├─ GraphStore.upsert_node() → kg_nodes (mention_count++)
-        └─ GraphStore.upsert_edge() → kg_edges (source_hash + event_time付き)
-```
-
-**重要な設計判断**：kioku-liteは内部でLLMを呼びません。kioku-liteを呼んでいるエージェント *自身が* LLMです — 自分の推論ステップでエンティティを抽出し、それを`kg-index`に渡します。追加コストなし。追加レイテンシなし。ベンダーロックインなし。
-
-### 検索パイプライン：トライハイブリッド → RRF
-
-```
-kioku-lite search "query" --entities "お母さん,Sato"
-         │
-         ▼
-1. FastEmbed.embed("query: " + text) → 1024次元クエリベクター
-         │
-         ├─────────────────────────────────────┐
-         ▼                   ▼                 ▼
-  BM25検索            セマンティック検索    グラフ検索
-  (FTS5 MATCH)        (sqlite-vec ANN)    (BFSトラバーサル)
-  BM25による上位K      コサイン類似度による  エンティティ連結
-  キーワードヒット      上位K              メモリ
-         │                   │                 │
-         └─────────────────────────────────────┘
-                             ▼
-              Reciprocal Rank Fusion (RRF)
-              定数k=60、融合スコア
-                             │
-                             ▼
-              重複排除された上位N件
-              (content_hashでキー付け)
-```
-
-3つのシグナル、ランカーを訓練せずに融合：
-
-| シグナル | 発見できるもの |
-|---|---|
-| BM25 | 正確な名前、日付、キーワード（日本語/多言語対応） |
-| ベクター | 意味的類似性 — 「ストレス」が「不安」にマッチ |
-| グラフ | エンティティ連結メモリ — 「お母さん」に接続する全エッジ |
-
-### グラフ検索：ハブノード問題（v0.1.27–0.1.28で解決）
-
-パーソナルKGでは、ユーザー自身のエンティティ（例：「Phúc」）がほぼすべてのメモリに登場します。30以上のエッジがあると、そこからトラバースすると全メモリの90%以上が返ってきます — シグナルゼロ。
-
-3つの層でこれを解決しました：
-
-**タスク1A — セルフエンティティの除外（v0.1.27）**
-```python
-# ハブを検出：mention_countが最も高いエンティティ
-self_entity = store.get_top_entity()  # → "Phúc"（33回言及）
-
-# 他のシードが存在する場合、ハブをトラバーサルから除外
-if self_entity and 他のシードが存在:
-    seeds = [e for e in seeds if e.name.lower() != self_entity.lower()]
-```
-
-**タスク1C — 適応ホップ制限（v0.1.27）**
-```python
-degree = store.get_degree(entity_name)
-effective_hops = 1 if degree > 15 else max_hops  # ハブ→1ホップ、通常→2
-```
-
-**タスク2E — マルチエンティティ交差（v0.1.28）**
-```
-2つ以上のシードがある場合：すべてのシードから到達可能なメモリを返す（交差）
-交差が空の場合はユニオンにフォールバック
-```
-
-結果：`--entities "お母さん,Sato"` の検索が、お母さん *と* Sato両方に関するメモリを返すようになりました — 全メモリの92%ではなく。
+*→ 詳細ドキュメント: [System Architecture](https://phuc-nt.github.io/kioku-lite-landing/blog.html#system-architecture) · [Write Pipeline](https://phuc-nt.github.io/kioku-lite-landing/blog.html#write-save-kg-index) · [Search Architecture](https://phuc-nt.github.io/kioku-lite-landing/blog.html#search-architecture)*
 
 ---
 

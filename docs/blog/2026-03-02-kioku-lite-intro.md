@@ -142,11 +142,11 @@ Việc của bạn chỉ đơn giản là copy hướng dẫn tương ứng đư
 
 Để xem thêm chi tiết toàn bộ hướng dẫn, hãy truy cập [Kioku Lite Homepage](https://phuc-nt.github.io/kioku-lite-landing/).
 
-## Kioku Lite vs Kioku Full
+## kioku-lite vs kioku-server
 
 Mình ra mắt **kioku-lite** trước tiên ưu tiên cho nhóm Personal User. Quá trình setup cực kỳ nhanh gọn thông qua `pipx`, không đòi hỏi phải dựng Docker, API keys hay external database như ChromaDB/FalkorDB. Bạn có thể dùng ngầm định ở dưới background máy cá nhân rất mượt.
 
-Trong khi đó, phiên bản **kioku-full** với graph database và vector database chuyên dụng, hỗ trợ multi-tenant cho Enterprise vẫn đang trong quá trình phát triển và hoàn thiện. Về quy mô infrastructure, kioku-full sẽ gần hơn với những gì Mem0 đang cung cấp — nhưng vẫn giữ nguyên triết lý agent-driven (không có LLM extraction tích hợp sẵn) và tri-hybrid search làm điểm khác biệt cốt lõi.
+Trong khi đó, **kioku-server** với graph database và vector database chuyên dụng, hỗ trợ multi-tenant cho Enterprise vẫn đang trong quá trình phát triển và hoàn thiện. Về quy mô infrastructure, kioku-server sẽ gần hơn với những gì Mem0 đang cung cấp — nhưng vẫn giữ nguyên triết lý agent-driven (không có LLM extraction tích hợp sẵn) và tri-hybrid search làm điểm khác biệt cốt lõi.
 
 ## Lời kết
 

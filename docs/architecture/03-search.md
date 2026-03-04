@@ -158,9 +158,9 @@ Results are merged, deduplicated by `content_hash`, then sorted by fused score d
 
 ## Real-World Performance (2026-02-27 Benchmark)
 
-Benchmark comparing kioku-lite (personal, zero Docker) against kioku-agent-kit (enterprise, full Docker) — same corpus of 20 docs, 10 queries, same model:
+Benchmark comparing kioku-lite (personal, zero Docker) against the full enterprise stack (ChromaDB + FalkorDB + Ollama) — same corpus of 20 docs, 10 queries, same model:
 
-| Metric | kioku-lite | kioku-agent-kit |
+| Metric | kioku-lite | Enterprise stack |
 |---|---|---|
 | Avg search latency | **1,210ms** | 9,176ms (throttled) / ~2,500ms normal |
 | Precision@3 | **0.60** | 0.60 |
@@ -168,6 +168,6 @@ Benchmark comparing kioku-lite (personal, zero Docker) against kioku-agent-kit (
 | Queries won | **6/10** | 2/10 |
 
 **kioku-lite wins:** Technical term queries (debug, merge PR, deploy) — BM25 FTS5 is more precise for exact keyword matches.
-**kioku-agent-kit wins:** Complex semantic + multi-entity queries — ChromaDB ANN + FalkorDB multi-hop traversal provides deeper recall.
+**Enterprise stack wins:** Complex semantic + multi-entity queries — ChromaDB ANN + FalkorDB multi-hop traversal provides deeper recall.
 
 Full details: [benchmark.md](../benchmark.md)
