@@ -1,6 +1,6 @@
 # System Architecture — kioku-agent-kit-lite
 
-> Last updated: 2026-03-03 (v0.1.26)
+> Last updated: 2026-03-04 (v0.1.28)
 
 ## Overview
 
@@ -158,18 +158,36 @@ All settings via environment variables with prefix `KIOKU_LITE_`:
 | GraphStore | KG search skipped. BM25 + Vector still work. |
 | SQLite | ❌ Critical — all search operations fail |
 
-## Comparison with kioku-agent-kit (full)
+## Graph Search: Hub Node Fixes (v0.1.27–0.1.28)
 
-kioku-agent-kit (full) is designed for **enterprise and multi-tenant** deployments, while kioku-lite is designed for **personal use, edge computing, and single-agent** setups.
+In personal knowledge graphs, the user's own entity (e.g. "Alice") appears in nearly every memory. Without mitigation, graph search traversing from this "hub" returns 90%+ of all memories — providing no signal.
 
-| | kioku-agent-kit-lite | kioku-agent-kit |
+Three layers of protection were added:
+
+| Fix | Version | Description |
+|---|---|---|
+| **1A — Self-entity exclusion** | v0.1.27 | `get_top_entity()` detects the hub (highest `mention_count`). If other seeds exist, hub is excluded from BFS traversal. |
+| **1C — Adaptive hop limit** | v0.1.27 | `get_degree(entity)` counts edges. If `degree > 15` → `effective_hops = 1`, else use `max_hops`. |
+| **2E — Multi-entity intersection** | v0.1.28 | When 2+ entity seeds: only return memories reachable from ALL seeds. Fallback to union if intersection empty. |
+
+See [proposals/2026-03-03-hub-node-problem.md](../proposals/2026-03-03-hub-node-problem.md) for detailed analysis.
+
+## Comparison with kioku-agent-kit (full) / kioku-server
+
+kioku-server (the planned enterprise version, inheriting core logic from kioku-lite) is designed for **enterprise and multi-tenant** cloud deployments.
+
+| | kioku-lite (current) | kioku-server (planned) |
 |---|---|---|
 | **Target use case** | Personal, edge, single-agent | Enterprise, multi-tenant, team memory |
-| **Vector store** | sqlite-vec (in-process) | ChromaDB (Docker :8001) |
-| **Graph store** | SQLite BFS | FalkorDB (Docker :6381) |
-| **Embedding** | FastEmbed ONNX (local) | Ollama (Docker :11434) |
-| **KG extraction** | Agent-driven (no built-in LLM) | Claude Haiku (built-in) |
-| **Search latency** | ~1.2s | ~2–3s (normal), up to 9s (throttled) |
-| **Setup** | `pip install kioku-agent-kit-lite` | Docker Compose |
-| **Offline capability** | ✅ (embed only) | ❌ (needs Ollama + APIs) |
-| **Multi-tenant** | Single user, profile-based isolation | Full multi-tenant with API keys |
+| **Interface** | CLI + SKILL.md | MCP Server (JSON-RPC) |
+| **Vector store** | sqlite-vec (in-process) | ChromaDB (dedicated container) |
+| **Graph store** | SQLite BFS (adaptive hops, intersection) | FalkorDB (property graph, Cypher) |
+| **Embedding** | FastEmbed ONNX (local) | Ollama / cloud API (configurable) |
+| **KG extraction** | Agent-driven (no built-in LLM) | Agent-driven (same design) |
+| **Search algorithms** | Tri-hybrid + RRF | Same tri-hybrid + RRF core |
+| **Setup** | `pipx install "kioku-lite[cli]"` | Docker Compose / Kubernetes |
+| **Offline capability** | ✅ (after model download) | Configurable |
+| **Multi-tenant** | Profile-based isolation | Full multi-tenant with API keys |
+| **Status** | ✅ Available (v0.1.28) | 🔨 In development |
+
+See [blog/2026-03-04-kioku-server-roadmap-en.md](../blog/2026-03-04-kioku-server-roadmap-en.md) for the full roadmap and comparison with Anthropic's MCP Memory Server.
